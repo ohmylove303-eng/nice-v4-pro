@@ -1,406 +1,1158 @@
 <!DOCTYPE html>
-<html lang="ko" class="dark">
+<html lang="ko">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Crypto Market Analysis</title>
-    
-    <!-- Tailwind CSS -->
+    <title>NICE v4 PRO - 전문가 레벨 AI 거래 시스템</title>
+
     <script src="https://cdn.tailwindcss.com"></script>
-    
-    <!-- Font Awesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
-    <!-- Chart.js -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap"
+        rel="stylesheet">
+
     <style>
-        /* Dark Theme */
+        * {
+            font-family: 'Noto Sans KR', sans-serif;
+        }
+
         body {
-            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 100%);
+            background: linear-gradient(135deg, #0a0a15 0%, #1a1a2e 100%);
             min-height: 100vh;
         }
-        
-        /* Glassmorphism */
+
         .glass-card {
             background: rgba(255, 255, 255, 0.03);
             backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
             border: 1px solid rgba(255, 255, 255, 0.05);
-            box-shadow: 
-                0 4px 24px -1px rgba(0, 0, 0, 0.2),
-                inset 0 1px 0 rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
         }
-        
-        .glass-card:hover {
-            background: rgba(255, 255, 255, 0.06);
-            border-color: rgba(255, 255, 255, 0.08);
+
+        /* Type 뱃지 */
+        .type-a {
+            background: linear-gradient(135deg, #10b981, #059669);
+        }
+
+        .type-b {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+        }
+
+        .type-c {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+        }
+
+        .type-badge {
+            padding: 4px 12px;
+            border-radius: 8px;
+            font-weight: 700;
+            font-size: 11px;
+        }
+
+        /* 메이저/기타 뱃지 */
+        .badge-major {
+            background: rgba(239, 68, 68, 0.2);
+            color: #f87171;
+            border: 1px solid #f87171;
+        }
+
+        .badge-other {
+            background: rgba(251, 191, 36, 0.2);
+            color: #fbbf24;
+            border: 1px solid #fbbf24;
+        }
+
+        /* 코인 카드 */
+        .coin-card {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .coin-card:hover {
+            background: rgba(0, 212, 255, 0.1);
+            border-color: #00d4ff;
             transform: translateY(-2px);
-            transition: all 0.3s ease;
         }
-        
-        /* Gradient Text */
-        .gradient-text {
-            background: linear-gradient(135deg, #60a5fa 0%, #a78bfa 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
+
+        .coin-card.selected {
+            border-color: #10b981;
+            background: rgba(16, 185, 129, 0.15);
         }
-        
-        /* Animations */
+
+        /* Market Map */
+        .market-map-cell {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            font-size: 10px;
+            font-weight: 700;
+            border-radius: 4px;
+            padding: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .market-map-cell:hover {
+            opacity: 0.8;
+            transform: scale(1.05);
+        }
+
+        .market-map-cell.bullish {
+            background: linear-gradient(135deg, #10b981, #059669);
+        }
+
+        .market-map-cell.bearish {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+        }
+
+        .market-map-cell.neutral {
+            background: linear-gradient(135deg, #6b7280, #4b5563);
+        }
+
+        /* 모달 */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.85);
+            z-index: 100;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: #1a1a2e;
+            border-radius: 16px;
+            padding: 24px;
+            max-width: 800px;
+            width: 95%;
+            max-height: 90vh;
+            overflow-y: auto;
+            border: 1px solid rgba(0, 212, 255, 0.3);
+        }
+
         @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.6; }
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.6;
+            }
         }
-        
-        .live-indicator {
+
+        .pulse {
             animation: pulse 2s infinite;
         }
-        
-        @keyframes spin {
-            from { transform: rotate(0deg); }
-            to { transform: rotate(360deg); }
+
+        .score-bar-bg {
+            background: rgba(0, 212, 255, 0.2);
+            height: 5px;
+            border-radius: 3px;
+            overflow: hidden;
         }
-        
-        .loading-spinner {
-            animation: spin 1s linear infinite;
+
+        .fill-green {
+            background: linear-gradient(90deg, #10b981, #34d399);
+        }
+
+        .fill-yellow {
+            background: linear-gradient(90deg, #f59e0b, #fbbf24);
+        }
+
+        .fill-red {
+            background: linear-gradient(90deg, #ef4444, #f87171);
+        }
+
+        /* Flow 아이템 */
+        .flow-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 6px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .flow-item:last-child {
+            border-bottom: none;
+        }
+
+        /* 지표 버튼 */
+        .indicator-btn {
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .indicator-btn.active {
+            background: rgba(16, 185, 129, 0.3);
+            border: 1px solid #10b981;
+        }
+
+        .indicator-btn:not(.active) {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        /* 카테고리 탭 */
+        .tab-btn {
+            padding: 10px 16px;
+            background: rgba(0, 212, 255, 0.15);
+            border: 1px solid rgba(0, 212, 255, 0.3);
+            color: #00d4ff;
+            cursor: pointer;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 13px;
+            transition: all 0.3s;
+            white-space: nowrap;
+        }
+
+        .tab-btn.active {
+            background: rgba(16, 185, 129, 0.4);
+            border-color: #10b981;
+            color: #10b981;
+        }
+
+        .tab-btn:hover {
+            background: rgba(0, 212, 255, 0.25);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
         }
     </style>
 </head>
-<body class="text-white font-sans antialiased">
+
+<body class="text-white">
     <div id="app" class="min-h-screen">
-        <!-- Header -->
-        <header class="sticky top-0 z-50 glass-card border-b border-white/5">
-            <div class="container mx-auto px-6 py-4 flex items-center justify-between">
-                <h1 class="text-2xl font-bold gradient-text">
-                    🪙 Crypto Analysis
-                </h1>
-                <div class="flex items-center gap-4">
-                    <span class="live-indicator text-emerald-400 text-sm">● LIVE</span>
-                    <div class="text-sm text-gray-400" id="last-update"></div>
+
+        <!-- 헤더 -->
+        <header class="glass-card sticky top-0 z-50 mb-3" style="border-radius: 0;">
+            <div class="container mx-auto px-3 py-2">
+                <div class="flex items-center justify-between mb-2">
+                    <div class="flex items-center gap-3">
+                        <h1 class="text-base font-black">🎯 NICE v4 PRO</h1>
+                        <span id="main-type" class="type-badge type-a">Type A</span>
+                        <span class="font-bold text-emerald-400" id="main-score">86점</span>
+                    </div>
+                    <div class="flex items-center gap-3 text-xs">
+                        <span class="pulse text-emerald-400">● LIVE</span>
+                        <span class="text-gray-400" id="last-update">18:40 갱신</span>
+                    </div>
+                </div>
+
+                <!-- 상태 바 -->
+                <div class="grid grid-cols-3 md:grid-cols-6 gap-2 text-center text-xs">
+                    <div class="glass-card p-2">
+                        <div class="text-gray-400">최고 신호</div>
+                        <div class="font-bold text-emerald-400" id="top-signal">BTC/ETH</div>
+                    </div>
+                    <div class="glass-card p-2">
+                        <div class="text-gray-400">🟢 Type A</div>
+                        <div class="font-bold" id="type-a-count">7개</div>
+                    </div>
+                    <div class="glass-card p-2">
+                        <div class="text-gray-400">다음 리포트</div>
+                        <div class="font-bold" id="next-report">19:00</div>
+                    </div>
+                    <div class="glass-card p-2">
+                        <div class="text-gray-400">추천 Kelly</div>
+                        <div class="font-bold text-emerald-400" id="avg-kelly">3.1%</div>
+                    </div>
+                    <div class="glass-card p-2">
+                        <div class="text-gray-400">Fear & Greed</div>
+                        <div class="font-bold" id="fear-greed">55 탐욕</div>
+                    </div>
+                    <div class="glass-card p-2">
+                        <div class="text-gray-400">Net Flow</div>
+                        <div class="font-bold text-emerald-400" id="net-flow">+$2.4B</div>
+                    </div>
                 </div>
             </div>
         </header>
-        
-        <!-- Main Content -->
-        <main class="container mx-auto px-6 py-8 space-y-8">
-            <!-- Market Gate Section -->
-            <section id="market-gate-section">
-                <div class="glass-card rounded-3xl p-8 flex items-center justify-center min-h-[200px]">
-                    <div class="text-center">
-                        <i class="fas fa-circle-notch loading-spinner text-4xl text-gray-600 mb-4"></i>
-                        <p class="text-gray-500">Market Gate 분석 중...</p>
+
+        <main class="container mx-auto px-3 space-y-3">
+
+            <!-- 카테고리 탭 -->
+            <div class="flex gap-2 overflow-x-auto pb-2">
+                <button class="tab-btn active" data-tab="scalp">💥 단타 (5~30분)</button>
+                <button class="tab-btn" data-tab="short">📈 단기 (30분~2시간)</button>
+                <button class="tab-btn" data-tab="medium">🔄 중기 (2시간~1일)</button>
+                <button class="tab-btn" data-tab="long">📊 장기 (1일~1주)</button>
+                <button class="tab-btn" data-tab="report">📋 AI 리포트</button>
+            </div>
+
+            <!-- 탭 콘텐츠 컨테이너 (통합 뷰) -->
+            <div id="dashboard-view" class="tab-content active">
+                <!-- 차트 + Market Map -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-3">
+                    <!-- TradingView 차트 -->
+                    <div class="lg:col-span-2 glass-card p-3">
+                        <div class="flex items-center justify-between mb-2">
+                            <div class="flex items-center gap-2">
+                                <span class="font-bold" id="chart-symbol">BTC</span>
+                                <span class="text-gray-400 text-sm" id="chart-name">Bitcoin</span>
+                                <span class="text-emerald-400 font-bold" id="chart-price">$45,200</span>
+                                <span class="text-emerald-400 text-sm" id="chart-change">+2.5%</span>
+                            </div>
+                            <div class="flex gap-1" id="timeframe-buttons">
+                                <button class="indicator-btn active" data-tf="5">5M</button>
+                                <button class="indicator-btn" data-tf="15">15M</button>
+                                <button class="indicator-btn" data-tf="60">1H</button>
+                                <button class="indicator-btn" data-tf="240">4H</button>
+                                <button class="indicator-btn" data-tf="D">1D</button>
+                            </div>
+                        </div>
+                        <div id="tradingview-chart"
+                            style="height: 320px; background: rgba(0,0,0,0.3); border-radius: 8px; overflow: hidden;">
+                            <!-- TradingView Widget -->
+                            <div id="tv-widget-container" style="width: 100%; height: 100%;"></div>
+                        </div>
+                        <!-- 지표 바 -->
+                        <div class="flex gap-2 mt-2 flex-wrap">
+                            <span class="indicator-btn active">BB (20,2)</span>
+                            <span class="indicator-btn active">RSI (14)</span>
+                            <span class="indicator-btn active">MACD (12,26,9)</span>
+                            <span class="indicator-btn active">EMA (20/50/200)</span>
+                            <span class="indicator-btn active">Volume</span>
+                            <span class="indicator-btn active">Stoch RSI</span>
+                        </div>
+                    </div>
+
+                    <!-- Market Map -->
+                    <div class="glass-card p-3">
+                        <h3 class="font-bold text-sm mb-2">🗺️ 시장 지도 (Market Map)</h3>
+                        <div class="grid grid-cols-4 gap-1" id="market-map" style="height: 320px; overflow-y: auto;">
+                            <!-- 동적으로 채워짐 -->
+                            <div class="text-center text-gray-500 py-10">로딩 중...</div>
+                        </div>
                     </div>
                 </div>
-            </section>
-            
-            <!-- Lead-Lag Section -->
-            <section id="lead-lag-section">
-                <div class="glass-card rounded-3xl p-8 flex items-center justify-center min-h-[200px]">
-                    <div class="text-center">
-                        <i class="fas fa-circle-notch loading-spinner text-4xl text-gray-600 mb-4"></i>
-                        <p class="text-gray-500">Lead-Lag 분석 중...</p>
+
+                <!-- AI 분석 패널 -->
+                <div class="glass-card p-3 mt-3" id="ai-analysis-panel">
+                    <div class="flex items-center gap-2 mb-3">
+                        <span class="text-lg">🤖</span>
+                        <h3 class="font-bold">AI 투자 분석</h3>
+                        <span class="text-xs text-gray-400" id="selected-coin-name">BTC Bitcoin</span>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-3 text-sm" id="ai-analysis-content">
+                        <!-- 유통량 -->
+                        <div class="glass-card p-3">
+                            <div class="text-gray-400 text-xs mb-1">📊 유통량</div>
+                            <div class="font-bold" id="ai-circulation">-</div>
+                            <div class="text-xs text-gray-400" id="ai-supply">-</div>
+                        </div>
+                        <!-- 주포 포진 -->
+                        <div class="glass-card p-3">
+                            <div class="text-gray-400 text-xs mb-1">🐋 주포 포진</div>
+                            <div class="font-bold text-emerald-400" id="ai-whale">-</div>
+                            <div class="text-xs text-gray-400" id="ai-whale-detail">-</div>
+                        </div>
+                        <!-- 프렉탈 핸들링 -->
+                        <div class="glass-card p-3">
+                            <div class="text-gray-400 text-xs mb-1">📐 프렉탈 핸들링</div>
+                            <div class="font-bold text-cyan-400" id="ai-fractal">-</div>
+                            <div class="text-xs text-gray-400" id="ai-fractal-detail">-</div>
+                        </div>
+                        <!-- 거래 추천 -->
+                        <div class="glass-card p-3">
+                            <div class="text-gray-400 text-xs mb-1">🎯 거래 추천</div>
+                            <div class="grid grid-cols-3 gap-1 text-xs">
+                                <div><span class="text-gray-400">진입</span><br><span class="font-bold"
+                                        id="ai-entry">-</span></div>
+                                <div><span class="text-gray-400">손절</span><br><span class="text-red-400 font-bold"
+                                        id="ai-sl">-</span></div>
+                                <div><span class="text-gray-400">익절</span><br><span class="text-emerald-400 font-bold"
+                                        id="ai-tp">-</span></div>
+                            </div>
+                        </div>
                     </div>
                 </div>
-            </section>
-            
-            <!-- VCP Signals Section -->
-            <section id="vcp-signals-section">
-                <div class="glass-card rounded-3xl p-8 flex items-center justify-center min-h-[200px]">
-                    <div class="text-center">
-                        <i class="fas fa-circle-notch loading-spinner text-4xl text-gray-600 mb-4"></i>
-                        <p class="text-gray-500">VCP 시그널 로딩 중...</p>
+
+                <!-- Final Top 5 Tables -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-3 mt-3">
+
+                    <!-- 메이저 코인 Top 5 -->
+                    <div class="glass-card p-3">
+                        <div class="flex items-center justify-between mb-3">
+                            <div class="flex items-center gap-2">
+                                <span class="text-lg">🏆</span>
+                                <h3 class="font-bold">Final Top 5 - 메이저 코인</h3>
+                            </div>
+                            <span class="text-xs text-gray-400" id="major-sort-criteria">상승량 → 거래량 → NICE</span>
+                        </div>
+                        <div class="space-y-2" id="major-coins-list">
+                            <!-- 동적으로 채워짐 -->
+                            <div class="text-center text-gray-500 py-4">데이터 로딩 중...</div>
+                        </div>
+                    </div>
+
+                    <!-- 기타 코인 Top 5 -->
+                    <div class="glass-card p-3">
+                        <div class="flex items-center justify-between mb-3">
+                            <div class="flex items-center gap-2">
+                                <span class="text-lg">⭐</span>
+                                <h3 class="font-bold">Final Top 5 - 기타 코인</h3>
+                            </div>
+                            <span class="text-xs text-gray-400">고수익 · 고변동</span>
+                        </div>
+                        <div class="space-y-2" id="other-coins-list">
+                            <!-- 동적으로 채워짐 -->
+                            <div class="text-center text-gray-500 py-4">데이터 로딩 중...</div>
+                        </div>
                     </div>
                 </div>
-            </section>
+            </div>
+
+            <!-- AI 리포트 탭 (고정 레이아웃) -->
+            <div id="tab-report" class="tab-content"
+                style="height: calc(100vh - 180px); display: flex; flex-direction: column; overflow: hidden;">
+                <!-- 상단 요약 카드 (고정 높이) -->
+                <div class="glass-card p-3 mb-2" style="flex-shrink: 0;">
+                    <h3 class="font-bold text-lg text-emerald-400 mb-2">🟢 TYPE A 신호 포착!</h3>
+                    <div class="grid grid-cols-4 gap-3 text-sm">
+                        <div>
+                            <div class="text-gray-400 text-xs">신뢰도</div>
+                            <div class="font-bold">76%</div>
+                        </div>
+                        <div>
+                            <div class="text-gray-400 text-xs">최종 점수</div>
+                            <div class="font-bold text-emerald-400">86/100</div>
+                        </div>
+                        <div>
+                            <div class="text-gray-400 text-xs">추천 Kelly</div>
+                            <div class="font-bold">4.0%</div>
+                        </div>
+                        <div>
+                            <div class="text-gray-400 text-xs">시장 상태</div>
+                            <div class="font-bold">BULL</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 중간 영역: 차트 (40%) + 전문가 (60%) -->
+                <div class="flex-1 grid grid-cols-5 gap-2 min-h-0">
+                    <!-- 레이어 차트 (40%) -->
+                    <div class="col-span-2 glass-card p-3 flex flex-col">
+                        <h3 class="font-bold text-sm mb-2">📊 레이어별 분석</h3>
+                        <div class="flex-1 min-h-0">
+                            <canvas id="layerChart" style="width: 100%; height: 100%;"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- 전문가 관점 (60%) - 스크롤 가능 -->
+                    <div class="col-span-3 glass-card p-3 flex flex-col">
+                        <h3 class="font-bold text-sm mb-2">💼 전문가 관점</h3>
+                        <div id="expert-views" class="flex-1 overflow-y-auto space-y-2 text-sm pr-1"
+                            style="max-height: 100%;">
+                            로딩 중...
+                        </div>
+                    </div>
+                </div>
+            </div>
+
         </main>
-        
-        <!-- Footer -->
-        <footer class="text-center py-8 text-gray-600 text-sm">
-            <p>© 2025 Crypto Analysis System - ULTRATHINK Edition</p>
+
+        <!-- 코인 상세 분석 모달 -->
+        <div class="modal-overlay" id="coin-modal">
+            <div class="modal-content" style="max-width: 900px;">
+                <div class="flex justify-between items-center mb-4">
+                    <div class="flex items-center gap-3">
+                        <h2 class="text-xl font-bold" id="modal-title">BTC Bitcoin</h2>
+                        <span id="modal-type-badge" class="type-badge type-a">Type A</span>
+                        <span id="modal-price" class="text-emerald-400 font-bold">$98,000</span>
+                        <span id="modal-change" class="text-emerald-400">+2.5%</span>
+                    </div>
+                    <button onclick="closeModal()" class="text-gray-400 hover:text-white text-2xl">&times;</button>
+                </div>
+
+                <!-- 미니 차트 -->
+                <div class="glass-card p-3 mb-4" style="height: 200px;">
+                    <div id="modal-chart-container" style="width: 100%; height: 100%;"></div>
+                </div>
+
+                <!-- AI 투자 분석 -->
+                <div class="glass-card p-3 mb-4">
+                    <h3 class="font-bold text-emerald-400 mb-3">🤖 AI 투자 분석</h3>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                        <div class="glass-card p-2">
+                            <div class="text-gray-400 text-xs">📊 유통량</div>
+                            <div class="font-bold" id="modal-circulation">93.2%</div>
+                            <div class="text-xs text-gray-400" id="modal-supply">19.8M / 21M</div>
+                        </div>
+                        <div class="glass-card p-2">
+                            <div class="text-gray-400 text-xs">🐋 주포 포진</div>
+                            <div class="font-bold text-cyan-400" id="modal-whale">축적 중</div>
+                            <div class="text-xs text-gray-400" id="modal-whale-detail">152 지갑, 38.5%</div>
+                        </div>
+                        <div class="glass-card p-2">
+                            <div class="text-gray-400 text-xs">📐 프렉탈 핸들링</div>
+                            <div class="font-bold text-purple-400" id="modal-fractal">Higher High</div>
+                            <div class="text-xs text-gray-400" id="modal-fractal-detail">강도 82%</div>
+                        </div>
+                        <div class="glass-card p-2">
+                            <div class="text-gray-400 text-xs">🎯 NICE 점수</div>
+                            <div class="font-bold text-emerald-400" id="modal-nice-score">86</div>
+                            <div class="text-xs text-gray-400" id="modal-nice-type">Type A 신호</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 거래 추천 -->
+                <div class="glass-card p-3 mb-4" style="background: rgba(16, 185, 129, 0.1); border-color: #10b981;">
+                    <h3 class="font-bold text-emerald-400 mb-3">🎯 거래 추천 (현재 시간 기준)</h3>
+                    <div class="grid grid-cols-3 md:grid-cols-6 gap-3 text-center text-sm">
+                        <div>
+                            <div class="text-gray-400 text-xs">진입가</div>
+                            <div class="font-bold text-cyan-400" id="modal-entry">$97,500</div>
+                        </div>
+                        <div>
+                            <div class="text-gray-400 text-xs">손절가 (SL)</div>
+                            <div class="font-bold text-red-400" id="modal-sl">$95,550</div>
+                        </div>
+                        <div>
+                            <div class="text-gray-400 text-xs">익절가 (TP)</div>
+                            <div class="font-bold text-emerald-400" id="modal-tp">$101,920</div>
+                        </div>
+                        <div>
+                            <div class="text-gray-400 text-xs">손익비 (R:R)</div>
+                            <div class="font-bold text-yellow-400" id="modal-rr">1:2.2</div>
+                        </div>
+                        <div>
+                            <div class="text-gray-400 text-xs">Kelly %</div>
+                            <div class="font-bold" id="modal-kelly">4.0%</div>
+                        </div>
+                        <div>
+                            <div class="text-gray-400 text-xs">Time-Stop</div>
+                            <div class="font-bold" id="modal-timestop">30분</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 매수/매도 버튼 -->
+                <div class="grid grid-cols-2 gap-4">
+                    <button id="modal-buy-btn" class="py-3 rounded-lg font-bold text-lg transition-all hover:scale-105"
+                        style="background: linear-gradient(135deg, #10b981, #059669);">
+                        📈 매수 추천
+                    </button>
+                    <button id="modal-sell-btn"
+                        class="py-3 rounded-lg font-bold text-lg transition-all hover:scale-105 opacity-50"
+                        style="background: linear-gradient(135deg, #ef4444, #dc2626);">
+                        📉 매도 (보류)
+                    </button>
+                </div>
+
+                <!-- 시간 정보 -->
+                <div class="text-center text-xs text-gray-400 mt-3">
+                    분석 시각: <span id="modal-time">19:45:00</span> | 유효 시간: 30분 | 다음 갱신: <span
+                        id="modal-next-update">20:00</span>
+                </div>
+            </div>
+        </div>
+
+        <footer class="text-center py-3 text-gray-500 text-xs">
+            NICE v4 PRO | 블랙록 × JP모건 × 전문 트레이더 통합 분석 | 빗썸 448개 코인 분석
         </footer>
     </div>
-    
+
+    <!-- TradingView 위젯 스크립트 -->
+    <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
+
     <script>
-        const CryptoApp = {
-            // Market Gate 로딩
-            async loadMarketGate() {
-                const container = document.getElementById('market-gate-section');
-                
-                try {
-                    const res = await fetch('/api/crypto/market-gate');
-                    const data = await res.json();
-                    
-                    if (data.error) {
-                        container.innerHTML = `<div class="glass-card rounded-3xl p-8 text-red-400">${data.error}</div>`;
-                        return;
-                    }
-                    
-                    const gateColor = data.gate_color === 'GREEN' ? '#10b981' :
-                                      data.gate_color === 'YELLOW' ? '#f59e0b' : '#ef4444';
-                    
-                    container.innerHTML = `
-                        <div class="glass-card rounded-3xl p-8">
-                            <div class="flex items-center justify-between mb-8">
-                                <div>
-                                    <h2 class="text-3xl font-black">Market Gate Analysis</h2>
-                                    <p class="text-gray-500 text-sm mt-1">${data.summary}</p>
-                                </div>
-                                
-                                <!-- Gauge -->
-                                <div class="relative w-32 h-32">
-                                    <svg class="w-full h-full -rotate-90">
-                                        <circle cx="64" cy="64" r="56" fill="none" 
-                                                stroke="rgba(255,255,255,0.05)" stroke-width="8"/>
-                                        <circle cx="64" cy="64" r="56" fill="none" 
-                                                stroke="${gateColor}" stroke-width="8" stroke-linecap="round"
-                                                stroke-dasharray="352" 
-                                                stroke-dashoffset="${352 * (1 - data.score / 100)}"
-                                                style="transition: stroke-dashoffset 1s ease-out"/>
-                                    </svg>
-                                    <div class="absolute inset-0 flex flex-col items-center justify-center">
-                                        <span class="text-4xl font-black">${data.score}</span>
-                                        <span class="text-xs font-bold px-2 py-0.5 rounded-full" 
-                                              style="background: ${gateColor}20; color: ${gateColor}">
-                                            ${data.gate_color}
-                                        </span>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <!-- Indicators Grid -->
-                            <div class="grid grid-cols-1 md:grid-cols-3 gap-6" id="gate-indicators">
-                                ${this.renderIndicators(data.indicators)}
-                            </div>
-                            
-                            <!-- Top Reasons -->
-                            <div class="mt-6 pt-6 border-t border-white/5">
-                                <h4 class="text-sm font-bold text-gray-400 mb-3">주요 이유</h4>
-                                <div class="flex flex-wrap gap-2">
-                                    ${data.top_reasons.map(r => `
-                                        <span class="px-3 py-1 bg-white/5 rounded-full text-xs text-gray-300">${r}</span>
-                                    `).join('')}
-                                </div>
-                            </div>
-                        </div>
-                    `;
-                } catch (e) {
-                    container.innerHTML = `<div class="glass-card rounded-3xl p-8 text-red-400">Error: ${e.message}</div>`;
+        let selectedCoin = 'BTC';
+        let tvWidget = null;
+
+        // 시장 지도 데이터
+        const marketMapData = [
+            { symbol: 'BTC', name: 'Bitcoin', change: 2.5, sector: 'L1', size: 4 },
+            { symbol: 'ETH', name: 'Ethereum', change: 3.2, sector: 'L1', size: 3 },
+            { symbol: 'SOL', name: 'Solana', change: 5.1, sector: 'L1', size: 2 },
+            { symbol: 'XRP', name: 'Ripple', change: 1.8, sector: 'L1', size: 2 },
+            { symbol: 'BNB', name: 'BNB', change: -1.2, sector: 'Ex', size: 2 },
+            { symbol: 'DOGE', name: 'Doge', change: 8.5, sector: 'Meme', size: 2 },
+            { symbol: 'ADA', name: 'Cardano', change: -0.5, sector: 'L1', size: 1 },
+            { symbol: 'AVAX', name: 'Avalanche', change: 4.2, sector: 'L1', size: 1 },
+            { symbol: 'DOT', name: 'Polkadot', change: -2.1, sector: 'L1', size: 1 },
+            { symbol: 'LINK', name: 'Chainlink', change: 2.1, sector: 'DeFi', size: 1 },
+            { symbol: 'MATIC', name: 'Polygon', change: 1.5, sector: 'L2', size: 1 },
+            { symbol: 'SHIB', name: 'Shiba', change: 12.3, sector: 'Meme', size: 1 },
+            { symbol: 'PEPE', name: 'Pepe', change: 15.2, sector: 'Meme', size: 1 },
+            { symbol: 'APT', name: 'Aptos', change: 6.8, sector: 'L1', size: 1 },
+            { symbol: 'SUI', name: 'Sui', change: 9.2, sector: 'L1', size: 1 },
+            { symbol: 'OP', name: 'Optimism', change: 3.5, sector: 'L2', size: 1 },
+            { symbol: 'ARB', name: 'Arbitrum', change: -1.8, sector: 'L2', size: 1 },
+            { symbol: 'UNI', name: 'Uniswap', change: 2.8, sector: 'DeFi', size: 1 },
+            { symbol: 'NEAR', name: 'Near', change: 3.5, sector: 'L1', size: 1 },
+            { symbol: 'WIF', name: 'Dogwifhat', change: 18.5, sector: 'Meme', size: 1 }
+        ];
+
+        // TradingView 위젯 초기화 (모든 지표 포함)
+        function initTradingView(symbol = 'BTC', interval = '5') {
+            const container = document.getElementById('tv-widget-container');
+            container.innerHTML = '';
+
+            // TradingView Interval 매핑
+            const intervalMap = {
+                'scalp': '5',
+                'short': '15',
+                'medium': '60',
+                'long': '240'  // 4시간
+            };
+
+            // 만약 interval 파라미터가 timeframe 문자열이면 매핑된 값 사용
+            const tvInterval = intervalMap[interval] || interval;
+
+            new TradingView.widget({
+                "autosize": true,
+                "symbol": `BITHUMB:${symbol}KRW`,
+                "interval": tvInterval,
+                "timezone": "Asia/Seoul",
+                "theme": "dark",
+                "style": "1",
+                "locale": "kr",
+                "toolbar_bg": "#1a1a2e",
+                "enable_publishing": false,
+                "hide_top_toolbar": false,
+                "hide_legend": false,
+                "save_image": false,
+                "container_id": "tv-widget-container",
+                "studies": [
+                    "BB@tv-basicstudies",           // 볼린저 밴드
+                    "RSI@tv-basicstudies",          // RSI
+                    "MACD@tv-basicstudies",         // MACD
+                    "MAExp@tv-basicstudies",        // EMA 20
+                    "MAExp@tv-basicstudies",        // EMA 50
+                    "MAExp@tv-basicstudies",        // EMA 200
+                    "Volume@tv-basicstudies",       // 거래량
+                    "StochasticRSI@tv-basicstudies" // 스토캐스틱 RSI
+                ],
+                "studies_overrides": {
+                    "volume.volume.color.0": "#ef4444",
+                    "volume.volume.color.1": "#10b981"
                 }
-            },
-            
-            renderIndicators(indicators) {
-                const categories = {
-                    trend: { title: 'Trend & Momentum', items: ['btc_price', 'btc_ema50', 'btc_ema200', 'btc_ema200_slope_pct_20'] },
-                    volatility: { title: 'Volatility & Risk', items: ['btc_atrp_14_pct', 'btc_volume_z_50'] },
-                    health: { title: 'Market Health', items: ['fear_greed_index', 'alt_breadth_above_ema50', 'funding_rate'] }
-                };
-                
-                return Object.entries(categories).map(([key, cat]) => {
-                    const catIndicators = indicators.filter(i => cat.items.includes(i.name));
-                    const bullish = catIndicators.filter(i => i.signal === 'Bullish').length;
-                    const pct = Math.round((bullish / catIndicators.length) * 100) || 0;
-                    
-                    return `
-                        <div class="glass-card rounded-2xl p-5">
-                            <div class="flex justify-between items-center mb-4">
-                                <h3 class="font-bold">${cat.title}</h3>
-                                <span class="${pct > 50 ? 'text-emerald-400' : 'text-rose-400'}">${pct}%</span>
-                            </div>
-                            <div class="h-2 bg-gray-800 rounded-full overflow-hidden mb-4">
-                                <div class="h-full ${pct > 50 ? 'bg-emerald-500' : 'bg-rose-500'}" 
-                                     style="width: ${pct}%"></div>
-                            </div>
-                            <div class="space-y-2 text-sm">
-                                ${catIndicators.map(ind => `
-                                    <div class="flex justify-between">
-                                        <span class="text-gray-400">${ind.name}</span>
-                                        <span class="${ind.signal === 'Bullish' ? 'text-emerald-400' : 
-                                                       ind.signal === 'Bearish' ? 'text-rose-400' : 'text-gray-400'}">
-                                            ${typeof ind.value === 'number' ? ind.value.toFixed(2) : ind.value || 'N/A'}
-                                        </span>
-                                    </div>
-                                `).join('')}
-                            </div>
-                        </div>
-                    `;
-                }).join('');
-            },
-            
-            // Lead-Lag 로딩
-            async loadLeadLag() {
-                const container = document.getElementById('lead-lag-section');
-                
-                try {
-                    const res = await fetch('/api/crypto/lead-lag');
-                    const data = await res.json();
-                    
-                    if (data.error) {
-                        container.innerHTML = `<div class="glass-card rounded-3xl p-8 text-red-400">${data.error}</div>`;
-                        return;
-                    }
-                    
-                    const varMap = {
-                        'TNX': '🇺🇸 10년물 국채',
-                        'TNX_MoM': '🇺🇸 10년물 국채 (MoM)',
-                        'SPY': '🇺🇸 S&P 500',
-                        'SPY_MoM': '🇺🇸 S&P 500 (MoM)',
-                        'VIX': '🫣 공포지수',
-                        'VIX_MoM': '🫣 공포지수 (MoM)',
-                        'DXY': '💵 달러 인덱스',
-                        'DXY_MoM': '💵 달러 인덱스 (MoM)',
-                        'GOLD': '🥇 금',
-                        'GOLD_MoM': '🥇 금 (MoM)',
-                        'ETH_MoM': '⟠ 이더리움 (MoM)',
-                        'QQQ_MoM': '📈 나스닥 (MoM)',
-                        'TLT_MoM': '🏦 채권 (MoM)',
-                        'OIL_MoM': '🛢️ 원유 (MoM)',
-                    };
-                    
-                    container.innerHTML = `
-                        <div class="glass-card rounded-3xl p-8">
-                            <div class="flex items-center justify-between mb-6">
-                                <div>
-                                    <h2 class="text-2xl font-bold">Lead-Lag Analytics</h2>
-                                    <p class="text-gray-500 text-sm">비트코인 선행 지표 분석 (Granger Causality)</p>
-                                </div>
-                            </div>
-                            
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
-                                ${data.leading_indicators.slice(0, 6).map(item => {
-                                    const niceName = varMap[item.variable] || item.variable;
-                                    const isInverse = item.correlation < 0;
-                                    const strength = Math.abs(item.correlation) * 100;
-                                    
-                                    return `
-                                        <div class="glass-card rounded-2xl p-5">
-                                            <div class="flex items-center gap-3 mb-4">
-                                                <div class="w-10 h-10 rounded-full bg-gray-800 flex items-center justify-center text-xs font-bold">
-                                                    ${item.lag}개월
-                                                </div>
-                                                <div>
-                                                    <div class="font-bold">${niceName}</div>
-                                                    <div class="text-xs text-gray-500">${item.variable}</div>
-                                                </div>
-                                            </div>
-                                            <div class="mb-3">
-                                                <div class="flex justify-between text-xs mb-1">
-                                                    <span class="text-gray-500">상관관계</span>
-                                                    <span class="${isInverse ? 'text-rose-400' : 'text-emerald-400'}">
-                                                        ${strength.toFixed(1)}%
-                                                    </span>
-                                                </div>
-                                                <div class="h-2 bg-gray-800 rounded-full overflow-hidden">
-                                                    <div class="h-full ${isInverse ? 'bg-rose-500' : 'bg-emerald-500'}" 
-                                                         style="width: ${strength}%"></div>
-                                                </div>
-                                            </div>
-                                            <div class="text-xs text-gray-400 bg-black/20 rounded-lg p-2">
-                                                ${isInverse ? '📉 지표 ↑ → 비트코인 ↓' : '📈 지표 ↑ → 비트코인 ↑'}
-                                            </div>
-                                        </div>
-                                    `;
-                                }).join('')}
-                            </div>
-                        </div>
-                    `;
-                } catch (e) {
-                    container.innerHTML = `<div class="glass-card rounded-3xl p-8 text-red-400">Error: ${e.message}</div>`;
+            });
+
+            // 버튼 상태 업데이트
+            document.querySelectorAll('.indicator-btn[data-tf]').forEach(btn => btn.classList.remove('active'));
+            // 가장 근접한 버튼 찾기 (단순화)
+            const btn = document.querySelector(`.indicator-btn[data-tf="${tvInterval}"]`) ||
+                document.querySelector(`.indicator-btn[data-tf="5"]`);
+            if (btn) btn.classList.add('active');
+        }
+
+        let currentChartInstance = null; // 차트 인스턴스 전역 관리
+        // AI 리포트 데이터 로드 (레이어 차트 + 요약)
+        async function loadAIReport() {
+            const ctx = document.getElementById('layerChart');
+            if (!ctx) return;
+
+            try {
+                // 시장 분석 API 호출
+                const res = await fetch('/api/nice/market');
+                const data = await res.json();
+
+                if (data.error) {
+                    console.error('AI Report error:', data.error);
+                    return;
                 }
-            },
-            
-            // VCP Signals 로딩
-            async loadVCPSignals() {
-                const container = document.getElementById('vcp-signals-section');
-                
-                try {
-                    const res = await fetch('/api/crypto/vcp-signals');
-                    const data = await res.json();
-                    
-                    if (data.error) {
-                        container.innerHTML = `<div class="glass-card rounded-3xl p-8 text-red-400">${data.error}</div>`;
-                        return;
+
+                // 레이어 점수 추출
+                const layers = data.layers || {};
+                const scores = [
+                    layers.technical?.score || 0,
+                    layers.onchain?.score || 0,
+                    layers.sentiment?.score || 0,
+                    layers.macro?.score || 0,
+                    layers.etf?.score || 0
+                ];
+
+                // 총점 및 신호 타입 업데이트
+                const totalScore = data.total_score || 0;
+                const signalType = data.signal_type || 'B';
+                const typeClass = signalType === 'A' ? 'text-emerald-400' : (signalType === 'B' ? 'text-yellow-400' : 'text-red-400');
+                const typeEmoji = signalType === 'A' ? '🟢' : (signalType === 'B' ? '🟡' : '🔴');
+
+                // AI 리포트 헤더 업데이트
+                const signalHeader = document.querySelector('#tab-report .glass-card h3');
+                if (signalHeader) {
+                    signalHeader.innerHTML = `${typeEmoji} TYPE ${signalType} ${data.recommendation || '신호'}`;
+                    signalHeader.className = `font-bold text-lg ${typeClass} mb-3`;
+                }
+
+                // 요약 카드 업데이트 (신뢰도, 점수, Kelly, RR)
+                const summaryGrid = document.querySelector('#tab-report .glass-card .grid');
+                if (summaryGrid) {
+                    summaryGrid.innerHTML = `
+                        <div>
+                            <div class="text-gray-400">신뢰도</div>
+                            <div class="font-bold text-lg">${data.signal_confidence || 60}%</div>
+                        </div>
+                        <div>
+                            <div class="text-gray-400">최종 점수</div>
+                            <div class="font-bold text-lg ${typeClass}">${totalScore.toFixed(0)}/100</div>
+                        </div>
+                        <div>
+                            <div class="text-gray-400">추천 Kelly</div>
+                            <div class="font-bold text-lg">${signalType === 'A' ? '4.0%' : (signalType === 'B' ? '2.0%' : '0%')}</div>
+                        </div>
+                        <div>
+                            <div class="text-gray-400">시장 상태</div>
+                            <div class="font-bold text-lg">${data.market_state || 'NEUTRAL'}</div>
+                        </div>
+                    `;
+                }
+
+                // 차트 색상 결정 (점수 기반)
+                const colors = scores.map(s => {
+                    if (s >= 25) return '#10b981';     // 녹색 (좋음)
+                    else if (s >= 15) return '#f59e0b'; // 황색 (중립)
+                    else return '#ef4444';             // 적색 (나쁨)
+                });
+
+                // 기존 차트 파괴
+                if (currentChartInstance) {
+                    currentChartInstance.destroy();
+                    currentChartInstance = null;
+                }
+
+                // 새 차트 생성
+                currentChartInstance = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: ['기술분석', 'OnChain', '시장심리', '매크로', 'ETF/기관'],
+                        datasets: [{
+                            label: '레이어 점수 (/30)',
+                            data: scores,
+                            backgroundColor: colors,
+                            borderRadius: 4,
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                callbacks: {
+                                    label: (ctx) => `${ctx.parsed.y}/30점`
+                                }
+                            }
+                        },
+                        scales: {
+                            y: { beginAtZero: true, max: 30, ticks: { color: '#9ca3af' }, grid: { color: 'rgba(255,255,255,0.1)' } },
+                            x: { ticks: { color: '#9ca3af' }, grid: { display: false } }
+                        }
                     }
-                    
-                    if (!data.signals || data.signals.length === 0) {
-                        container.innerHTML = `
-                            <div class="glass-card rounded-3xl p-8">
-                                <h2 class="text-2xl font-bold mb-4">VCP Signals</h2>
-                                <p class="text-gray-500">현재 활성 시그널이 없습니다.</p>
+                });
+
+            } catch (e) {
+                console.error('AI Report load error:', e);
+                // 폴백: 기본 차트
+                initFallbackLayerChart();
+            }
+        }
+
+        // 폴백 레이어 차트 (API 실패 시)
+        function initFallbackLayerChart() {
+            const ctx = document.getElementById('layerChart');
+            if (!ctx) return;
+
+            if (currentChartInstance) {
+                currentChartInstance.destroy();
+            }
+
+            currentChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['기술분석', 'OnChain', '시장심리', '매크로', 'ETF/기관'],
+                    datasets: [{
+                        label: '분석 점수',
+                        data: [20, 15, 18, 12, 22],
+                        backgroundColor: ['#10b981', '#00d4ff', '#f59e0b', '#ef4444', '#10b981'],
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: { beginAtZero: true, max: 30, ticks: { color: '#9ca3af' }, grid: { color: 'rgba(255,255,255,0.1)' } },
+                        x: { ticks: { color: '#9ca3af' }, grid: { display: false } }
+                    }
+                }
+            });
+        }
+
+        // 기존 initLayerChart를 loadAIReport로 대체
+        function initLayerChart() {
+            loadAIReport();
+        }
+
+        // Market Map 렌더링
+        function renderMarketMap() {
+            const container = document.getElementById('market-map');
+            if (!container) return;
+
+            if (!marketMapData || marketMapData.length === 0) {
+                container.innerHTML = '<div class="text-center text-gray-500 col-span-4 py-10">데이터 로딩 중...</div>';
+                return;
+            }
+
+            container.innerHTML = marketMapData.map(coin => {
+                const colorClass = coin.change >= 3 ? 'bullish' : (coin.change <= -3 ? 'bearish' : 'neutral');
+                const sizeClass = coin.size >= 3 ? 'col-span-2 row-span-2' : (coin.size >= 2 ? 'col-span-1 row-span-2' : '');
+
+                return `
+                    <div class="market-map-cell ${colorClass} ${sizeClass}" 
+                         onclick="selectCoin('${coin.symbol}')"
+                         title="${coin.name}: ${coin.change >= 0 ? '+' : ''}${coin.change.toFixed(1)}%">
+                        <div class="font-bold text-xs">${coin.symbol}</div>
+                        <div class="text-xs opacity-80">${coin.change >= 0 ? '+' : ''}${coin.change.toFixed(1)}%</div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        let currentTimeframe = 'scalp'; // 현재 타임프레임 상태
+
+        // 코인 카드 렌더링
+        function renderCoinCard(coin, idx, isMajor) {
+            const typeClass = coin.nice?.type === 'A' ? 'type-a' : (coin.nice?.type === 'B' ? 'type-b' : 'type-c');
+            const scoreColor = coin.nice?.score >= 75 ? 'text-emerald-400' : (coin.nice?.score >= 55 ? 'text-yellow-400' : 'text-red-400');
+            const changeColor = coin.change_24h >= 0 ? 'text-emerald-400' : 'text-red-400';
+            const badgeClass = isMajor ? 'badge-major' : 'badge-other';
+            const volumeFormatted = formatVolume(coin.volume_24h);
+
+            return `
+                <div class="coin-card ${coin.symbol === selectedCoin ? 'selected' : ''}" 
+                     data-symbol="${coin.symbol}"
+                     onclick="selectCoin('${coin.symbol}')">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-2">
+                            <span class="font-bold text-lg">#${idx + 1}</span>
+                            <div>
+                                <div class="flex items-center gap-2">
+                                    <span class="font-bold">${coin.symbol}</span>
+                                    <span class="text-xs ${badgeClass} px-1 rounded">${isMajor ? '메이저' : '기타'}</span>
+                                </div>
+                                <div class="text-xs text-gray-400">${coin.sector || ''}</div>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <div class="${changeColor} font-bold">${coin.change_24h >= 0 ? '+' : ''}${coin.change_24h?.toFixed(1)}%</div>
+                            <div class="text-xs text-gray-400">Vol: ${volumeFormatted}</div>
+                        </div>
+                    </div>
+                    <div class="flex items-center justify-between mt-2 text-xs">
+                        <span class="type-badge ${typeClass}">Type ${coin.nice?.type}</span>
+                        <span class="${scoreColor} font-bold">NICE ${coin.nice?.score}</span>
+                        <span class="text-gray-400">Kelly ${coin.trading?.kelly_pct}%</span>
+                    </div>
+                </div>
+            `;
+        }
+
+        function formatVolume(vol) {
+            if (vol >= 1e9) return `$${(vol / 1e9).toFixed(1)}B`;
+            if (vol >= 1e6) return `$${(vol / 1e6).toFixed(0)}M`;
+            return `$${vol?.toFixed(0) || 0}`;
+        }
+
+        // 코인 선택 및 UI 업데이트 (API 연동)
+        async function selectCoin(symbol) {
+            selectedCoin = symbol;
+
+            // 1. 차트 업데이트
+            initTradingView(symbol, currentTimeframe);
+
+            // 2. 카드 하이라이트
+            document.querySelectorAll('.coin-card').forEach(card => {
+                if (card.dataset.symbol === symbol) {
+                    card.classList.add('selected');
+                } else {
+                    card.classList.remove('selected');
+                }
+            });
+
+            // 3. API에서 코인 상세 정보 가져오기
+            try {
+                const res = await fetch(`/api/crypto/coin/${symbol}`);
+                const data = await res.json();
+
+                if (data.error) {
+                    console.error('Coin detail error:', data.error);
+                    return;
+                }
+
+                // 상단 정보 업데이트
+                document.getElementById('chart-symbol').textContent = data.symbol;
+                document.getElementById('chart-name').textContent = data.name;
+                document.getElementById('chart-price').textContent = `$${data.price.toLocaleString()}`;
+                document.getElementById('chart-change').textContent = `${data.change_24h >= 0 ? '+' : ''}${data.change_24h.toFixed(1)}%`;
+                document.getElementById('chart-change').className = data.change_24h >= 0 ? 'text-emerald-400 text-sm' : 'text-red-400 text-sm';
+                document.getElementById('selected-coin-name').textContent = `${data.symbol} ${data.name}`;
+
+                // AI 분석 패널 업데이트
+                document.getElementById('ai-circulation').textContent = `${data.supply.circulating_pct.toFixed(1)}%`;
+                document.getElementById('ai-supply').textContent = data.supply.total;
+                document.getElementById('ai-whale').textContent = data.whale.position === 'accumulating' ? '축적 중' : (data.whale.position === 'distributing' ? '매도 중' : '관망');
+                document.getElementById('ai-whale-detail').textContent = `${data.whale.wallet_count} 지갑, ${data.whale.holding_pct.toFixed(1)}%`;
+                document.getElementById('ai-fractal').textContent = data.fractal.pattern;
+                document.getElementById('ai-fractal-detail').textContent = `강도 ${data.fractal.strength.toFixed(0)}%`;
+
+                // 거래 추천
+                document.getElementById('ai-entry').textContent = `$${data.trading.entry_price.toLocaleString()}`;
+                document.getElementById('ai-sl').textContent = `$${data.trading.stop_loss.toLocaleString()}`;
+                document.getElementById('ai-tp').textContent = `$${data.trading.take_profit.toLocaleString()}`;
+
+            } catch (e) {
+                console.error('selectCoin API error:', e);
+                // 폴백: 기본 표시
+                document.getElementById('chart-symbol').textContent = symbol;
+                document.getElementById('chart-name').textContent = symbol;
+                document.getElementById('selected-coin-name').textContent = symbol;
+            }
+        }
+
+        // 헤더 실시간 데이터 로드
+        async function loadHeaderData() {
+            try {
+                const res = await fetch('/api/crypto/real-time');
+                const data = await res.json();
+
+                if (data.error) return;
+
+                document.getElementById('top-signal').textContent = data.top_signal;
+                document.getElementById('type-a-count').textContent = `${data.type_a_count}개`;
+                document.getElementById('next-report').textContent = data.next_report;
+                document.getElementById('avg-kelly').textContent = `${data.avg_kelly}%`;
+                document.getElementById('fear-greed').textContent = `${data.fear_greed.value} ${data.fear_greed.label}`;
+                document.getElementById('net-flow').textContent = `${data.net_flow.direction === 'in' ? '+' : '-'}$${Math.abs(data.net_flow.value).toFixed(1)}B`;
+                document.getElementById('main-score').textContent = `${data.main_score}점`;
+
+                // Type 배지 업데이트
+                const typeBadge = document.getElementById('main-type');
+                typeBadge.textContent = `Type ${data.main_type}`;
+                typeBadge.className = `type-badge type-${data.main_type.toLowerCase()}`;
+
+            } catch (e) {
+                console.error('Header data error:', e);
+            }
+        }
+
+        // 전문가 분석 로드 (API 연동)
+        async function loadExpertAnalysis() {
+            const container = document.getElementById('expert-views');
+            container.innerHTML = '<div class="text-center text-gray-400 py-4">전문가 데이터 분석 중...</div>';
+
+            try {
+                const res = await fetch('/api/nice/experts');
+                const data = await res.json();
+
+                if (data.error) {
+                    container.innerHTML = '<div class="text-red-400">데이터 로드 실패</div>';
+                    return;
+                }
+
+                // 전문가 관점 렌더링
+                const experts = data.experts || [];
+
+                if (experts.length > 0) {
+                    container.innerHTML = experts.map(exp => {
+                        // 신호 색상 결정
+                        const signal = exp.signal || '';
+                        let signalClass = 'text-gray-400';
+                        if (signal.includes('강한 매수') || signal.includes('매수')) {
+                            signalClass = 'text-emerald-400';
+                        } else if (signal.includes('매도')) {
+                            signalClass = 'text-red-400';
+                        } else if (signal.includes('중립') || signal.includes('관망')) {
+                            signalClass = 'text-yellow-400';
+                        }
+
+                        return `
+                            <div class="glass-card p-3 mb-2">
+                                <div class="flex justify-between items-start mb-2">
+                                    <span class="font-bold text-white">${exp.expert || exp.name || '전문가'}</span>
+                                    <span class="${signalClass} font-bold text-sm">${exp.signal || '분석 중'}</span>
+                                </div>
+                                <div class="text-xs text-gray-400 mb-2">${exp.reasoning || exp.action || ''}</div>
+                                ${exp.key_factors && exp.key_factors.length > 0 ? `
+                                    <div class="text-xs text-gray-500">
+                                        ${exp.key_factors.slice(0, 2).map(f => `• ${f}`).join('<br>')}
+                                    </div>
+                                ` : ''}
                             </div>
                         `;
-                        return;
-                    }
-                    
-                    container.innerHTML = `
-                        <div class="glass-card rounded-3xl p-8">
-                            <div class="flex items-center justify-between mb-6">
-                                <div>
-                                    <h2 class="text-2xl font-bold">VCP Signals</h2>
-                                    <p class="text-gray-500 text-sm">최근 ${data.count}개 시그널</p>
+                    }).join('');
+
+                    // 컨센서스 추가
+                    if (data.consensus) {
+                        const consensusClass = data.consensus.signal?.includes('매수') ? 'text-emerald-400' : 'text-yellow-400';
+                        container.innerHTML += `
+                            <div class="glass-card p-3 mt-3 border border-emerald-500/30">
+                                <div class="flex justify-between items-center">
+                                    <span class="font-bold text-emerald-400">📊 컨센서스</span>
+                                    <span class="${consensusClass} font-bold">${data.consensus.signal || '분석 중'}</span>
                                 </div>
+                                <div class="text-xs text-gray-400 mt-1">신뢰도: ${data.consensus.confidence?.toFixed(0) || 0}%</div>
                             </div>
-                            
-                            <div class="overflow-x-auto">
-                                <table class="w-full text-sm">
-                                    <thead>
-                                        <tr class="border-b border-white/10 text-gray-400">
-                                            <th class="text-left py-3 px-4">심볼</th>
-                                            <th class="text-left py-3 px-4">타입</th>
-                                            <th class="text-right py-3 px-4">점수</th>
-                                            <th class="text-right py-3 px-4">돌파%</th>
-                                            <th class="text-right py-3 px-4">등급</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        ${data.signals.slice(0, 10).map(s => `
-                                            <tr class="border-b border-white/5 hover:bg-white/5">
-                                                <td class="py-3 px-4 font-medium">${s.symbol}</td>
-                                                <td class="py-3 px-4">
-                                                    <span class="px-2 py-1 rounded text-xs ${
-                                                        s.signal_type === 'BREAKOUT' ? 'bg-emerald-500/20 text-emerald-400' : 
-                                                        'bg-blue-500/20 text-blue-400'
-                                                    }">
-                                                        ${s.signal_type}
-                                                    </span>
-                                                </td>
-                                                <td class="py-3 px-4 text-right font-bold ${
-                                                    s.score >= 70 ? 'text-emerald-400' : 
-                                                    s.score >= 50 ? 'text-yellow-400' : 'text-gray-400'
-                                                }">${s.score}</td>
-                                                <td class="py-3 px-4 text-right">${(s.breakout_close_pct || 0).toFixed(2)}%</td>
-                                                <td class="py-3 px-4 text-right">${s.liquidity_bucket}</td>
-                                            </tr>
-                                        `).join('')}
-                                    </tbody>
-                                </table>
-                            </div>
+                        `;
+                    }
+                } else {
+                    // 기본 표시
+                    container.innerHTML = `
+                        <div class="flow-item">
+                            <span class="text-gray-400">BlackRock</span>
+                            <span class="text-emerald-400 font-bold">비중 확대 (Overweight)</span>
+                        </div>
+                        <div class="flow-item">
+                            <span class="text-gray-400">JP Morgan</span>
+                            <span class="text-emerald-400 font-bold">ETF 유입 지속</span>
+                        </div>
+                        <div class="flow-item">
+                            <span class="text-gray-400">Goldman Sachs</span>
+                            <span class="text-yellow-400 font-bold">중립 (Neutral)</span>
                         </div>
                     `;
-                } catch (e) {
-                    container.innerHTML = `<div class="glass-card rounded-3xl p-8 text-red-400">Error: ${e.message}</div>`;
                 }
-            },
-            
-            // 초기화
-            init() {
-                this.loadMarketGate();
-                this.loadLeadLag();
-                this.loadVCPSignals();
-                
-                // 10분마다 자동 갱신
-                setInterval(() => {
-                    this.loadMarketGate();
-                    this.loadLeadLag();
-                    this.loadVCPSignals();
-                }, 10 * 60 * 1000);
-                
-                // 마지막 업데이트 시간
-                document.getElementById('last-update').textContent = 
-                    `Last Updated: ${new Date().toLocaleTimeString('ko-KR')}`;
+            } catch (e) {
+                console.error('Expert analysis error:', e);
+                container.innerHTML = `
+                    <div class="text-red-400 text-center py-4">전문가 분석 로드 실패</div>
+                `;
             }
-        };
-        
-        document.addEventListener('DOMContentLoaded', () => CryptoApp.init());
+        }
+
+        // 순위 로드 (Timeframe 파라미터 적용)
+        async function loadRankings(timeframe = 'scalp') {
+            try {
+                // UI 로딩 표시
+                const loadingHtml = '<div class="text-center text-gray-500 py-4 pulse">데이터 분석 중...</div>';
+                document.getElementById('major-coins-list').innerHTML = loadingHtml;
+                document.getElementById('other-coins-list').innerHTML = loadingHtml;
+                document.getElementById('market-map').innerHTML = loadingHtml;
+
+                const res = await fetch(`/api/crypto/rankings?timeframe=${timeframe}`);
+                const data = await res.json();
+
+                if (data.error) {
+                    console.error('Rankings error:', data.error);
+                    return;
+                }
+
+                // 메이저 코인
+                document.getElementById('major-coins-list').innerHTML =
+                    data.major?.map((coin, idx) => renderCoinCard(coin, idx, true)).join('') || '<div class="text-gray-400">데이터 없음</div>';
+
+                // 기타 코인
+                document.getElementById('other-coins-list').innerHTML =
+                    data.other?.map((coin, idx) => renderCoinCard(coin, idx, false)).join('') || '<div class="text-gray-400">데이터 없음</div>';
+
+                // Market Map 업데이트 (순위 데이터 기반)
+                const allCoins = [...(data.major || []), ...(data.other || [])];
+
+                // Market Map 데이터 형식 변환 및 정렬
+                marketMapData = allCoins.map(coin => ({
+                    symbol: coin.symbol,
+                    name: coin.name,
+                    change: coin.change_24h,
+                    sector: coin.sector || 'Other',
+                    size: coin.is_major ? 4 : 2 // 메이저는 크게
+                })).sort((a, b) => Math.abs(b.change) - Math.abs(a.change)); // 변동폭 큰 순서
+
+                renderMarketMap();
+
+                // 첫번째 코인 자동 선택 (만약 선택된 코인이 없다면)
+                if (data.major && data.major.length > 0) {
+                    // selectCoin(data.major[0].symbol); // (옵션: 자동 선택 끄기)
+                }
+
+            } catch (e) {
+                console.error('Rankings load error:', e);
+            }
+        }
+
+        // 카테고리 탭 전환 및 데이터 리로드
+        document.addEventListener('DOMContentLoaded', () => {
+            // ... (기존 초기화 코드)
+
+            // 탭 버튼 이벤트
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.addEventListener('click', function () {
+                    const tabName = this.dataset.tab;
+
+                    // 버튼 활성화
+                    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+
+                    // 탭 콘텐츠 전환 logic
+                    if (tabName === 'report') {
+                        // AI 리포트 탭 표시
+                        document.getElementById('dashboard-view').classList.remove('active');
+                        const reportTab = document.getElementById('tab-report');
+                        if (reportTab) reportTab.classList.add('active');
+
+                        initLayerChart();
+                        loadExpertAnalysis();
+                    } else {
+                        // 트레이딩 탭 (통합 뷰) 표시
+                        document.getElementById('tab-report').classList.remove('active');
+                        document.getElementById('dashboard-view').classList.add('active');
+
+                        // 데이터 리로드
+                        currentTimeframe = tabName;
+                        loadRankings(tabName);
+
+                        // 차트 인터벌 변경
+                        initTradingView(selectedCoin, tabName); // 현재 선택된 코인의 인터벌 변경
+
+                        // 정렬 기준 텍스트 업데이트
+                        const sortText = {
+                            'scalp': '상승량 → 거래량 → NICE',
+                            'short': '추세강도 → NICE 점수',
+                            'medium': 'NICE 점수 → 고래 포지션',
+                            'long': '시가총액 → 기관 점수'
+                        };
+                        document.getElementById('major-sort-criteria').textContent = sortText[tabName] || '상승량 → 거래량';
+                    }
+                });
+            });
+
+            // 초기 로드
+            loadRankings('scalp');
+            loadHeaderData();
+            initTradingView('BTC', 'scalp');
+            renderMarketMap();
+
+            // 헤더 자동 갱신 (30초마다)
+            setInterval(loadHeaderData, 30000);
+
+            // 타임스탬프 업데이트
+            document.getElementById('last-update').textContent = new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }) + ' 갱신';
+        });
     </script>
 </body>
+
 </html>

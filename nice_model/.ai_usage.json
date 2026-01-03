@@ -1,0 +1,11 @@
+{
+  "gpt_daily_limit": 2,
+  "gpt_used_today": 0,
+  "gpt_last_used": null,
+  "gpt_allowed_hours": [
+    9,
+    21
+  ],
+  "gemini_used_today": 0,
+  "last_reset_date": "2026-01-03"
+}
