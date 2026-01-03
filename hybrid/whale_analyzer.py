@@ -409,8 +409,8 @@ class WhaleAnalyzer:
                 # NICE 점수 > 고래 포지션(가정)
                 return (-c['nice']['score'], -c['market_cap'])
             else: # long
-                # 시총 > NICE 점수
-                return (-c['market_cap'], -c['nice']['score'])
+                # 장기: NICE 점수 > 시총 (장기 투자는 펀더멘탈 중요)
+                return (-c['nice']['score'], -c['market_cap'])
         
         major_coins.sort(key=sort_key)
         other_coins.sort(key=sort_key)
