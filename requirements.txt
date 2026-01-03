@@ -1,0 +1,13 @@
+flask>=3.0.0
+pandas>=2.1.0
+numpy>=1.26.0
+yfinance>=0.2.33
+ccxt>=4.1.0
+statsmodels>=0.14.0
+python-dotenv>=1.0.0
+requests>=2.31.0
+google-generativeai>=0.3.0
+aiohttp>=3.9.0
+sqlalchemy>=2.0.0
+python-dateutil>=2.8.2
+gunicorn
