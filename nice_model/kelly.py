@@ -148,6 +148,67 @@ class KellyCalculator:
             'take_profit_pct': take_profit_pct,
             'rr_ratio': take_profit_pct / stop_loss_pct if stop_loss_pct > 0 else 0
         }
+    
+    def calculate_by_coin_type(
+        self, 
+        signal_type: str, 
+        coin_type: str = 'major',
+        volatility: str = 'medium',
+        confidence: float = 100.0
+    ) -> dict:
+        """
+        메이저/기타 코인별 차등 Kelly % 계산
+        
+        신규 파일(NICE_v4_Backend_API.py) 로직 적용:
+        - 메이저: 승률 68%, RR 1.3 (안정적)
+        - 기타: 승률 55%, RR 1.8 (고수익/고위험)
+        
+        Args:
+            signal_type: 'A', 'B', or 'C'
+            coin_type: 'major' or 'other'
+            volatility: 'low', 'medium', 'high'
+            confidence: 신호 신뢰도 (0-100%)
+            
+        Returns:
+            dict: Kelly 계산 결과
+        """
+        signal_type = signal_type.upper()
+        coin_type = coin_type.lower()
+        
+        # 코인 타입별 승률 및 RR  
+        win_rates = {'major': 0.68, 'other': 0.55}
+        avg_ratios = {'major': 1.3, 'other': 1.8}
+        
+        p = win_rates.get(coin_type, 0.60)
+        b = avg_ratios.get(coin_type, 1.5)
+        q = 1 - p
+        
+        # 기본 Kelly 계산
+        base_kelly = (b * p - q) / b if b > 0 else 0
+        
+        # 신호 타입별 배수 (A=100%, B=70%, C=40%)
+        signal_mult = {'A': 1.0, 'B': 0.7, 'C': 0.4, 'WAIT': 0.0}.get(signal_type, 0)
+        
+        # 신뢰도 배수 (0-100% → 0-1)
+        conf_mult = min(confidence, 100) / 100
+        
+        # 변동성 배수 (높으면 포지션 축소)
+        vol_mult = {'low': 1.0, 'medium': 0.8, 'high': 0.6}.get(volatility, 0.8)
+        
+        # 최종 Kelly (최대 4% 제한)
+        final_kelly = min(base_kelly * 0.25 * signal_mult * conf_mult * vol_mult, 0.04)
+        
+        return {
+            'coin_type': coin_type,
+            'signal_type': signal_type,
+            'base_kelly_pct': round(base_kelly * 100, 2),
+            'final_kelly_pct': round(final_kelly * 100, 2),
+            'position_size_usd': round(self.capital * final_kelly, 2),
+            'win_rate': p,
+            'rr_ratio': b,
+            'volatility': volatility,
+            'confidence': confidence
+        }
 
 
 # 테스트용

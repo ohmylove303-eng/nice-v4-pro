@@ -1,15 +1,46 @@
 #!/usr/bin/env python3
 from flask import Flask, jsonify, render_template, request, redirect
+from flask_cors import CORS
 from datetime import datetime
 import json
 import pandas as pd
+import logging
+
+# ============================================================
+# INITIALIZATION & LOGGING
+# ============================================================
 
 app = Flask(__name__)
+CORS(app)
+
+# 로깅 설정
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s [%(levelname)s] %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S'
+)
+logger = logging.getLogger(__name__)
+
+
+# ============================================================
+# HEALTH CHECK & SYSTEM STATUS
+# ============================================================
+
+@app.route('/api/health')
+def api_health():
+    """서버 상태 확인 API"""
+    return jsonify({
+        'status': 'ok',
+        'service': 'NICE v4 PRO',
+        'version': '4.0.1',
+        'timestamp': datetime.now().isoformat()
+    })
 
 
 # ============================================================
 # CRYPTO API ENDPOINTS
 # ============================================================
+
 
 @app.route('/api/crypto/market-gate')
 def api_crypto_market_gate():
