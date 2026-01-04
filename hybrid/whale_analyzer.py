@@ -400,8 +400,8 @@ class WhaleAnalyzer:
         # 정렬 로직 차별화
         def sort_key(c):
             if timeframe == 'scalp':
-                # 변동성 > 거래량
-                return (-abs(c['change_24h']), -c['volume_24h'])
+                # 단타: 상승량 → 거래량 → NICE 점수
+                return (-abs(c['change_24h']), -c['volume_24h'], -c['nice']['score'])
             elif timeframe == 'short':
                 # NICE 점수 > 상승률
                 return (-c['nice']['score'], -c['change_24h'])

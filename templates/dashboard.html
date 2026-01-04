@@ -913,18 +913,27 @@
                 document.getElementById('chart-change').className = data.change_24h >= 0 ? 'text-emerald-400 text-sm' : 'text-red-400 text-sm';
                 document.getElementById('selected-coin-name').textContent = `${data.symbol} ${data.name}`;
 
-                // AI 분석 패널 업데이트
-                document.getElementById('ai-circulation').textContent = `${data.supply.circulating_pct.toFixed(1)}%`;
-                document.getElementById('ai-supply').textContent = data.supply.total;
-                document.getElementById('ai-whale').textContent = data.whale.position === 'accumulating' ? '축적 중' : (data.whale.position === 'distributing' ? '매도 중' : '관망');
-                document.getElementById('ai-whale-detail').textContent = `${data.whale.wallet_count} 지갑, ${data.whale.holding_pct.toFixed(1)}%`;
-                document.getElementById('ai-fractal').textContent = data.fractal.pattern;
-                document.getElementById('ai-fractal-detail').textContent = `강도 ${data.fractal.strength.toFixed(0)}%`;
+
+                // AI 분석 패널 업데이트 (안전한 접근)
+                document.getElementById('ai-circulation').textContent = data.supply?.circulating_pct ? `${data.supply.circulating_pct.toFixed(1)}%` : '-';
+                document.getElementById('ai-supply').textContent = data.supply?.total || '-';
+
+                // 고래 포지션 매핑 (accumulating, distributing, holding)
+                const whalePositionMap = {
+                    'accumulating': '축적 중',
+                    'distributing': '매도 중',
+                    'holding': '관망'
+                };
+                document.getElementById('ai-whale').textContent = whalePositionMap[data.whale?.position] || data.whale?.position || '-';
+                document.getElementById('ai-whale-detail').textContent = data.whale?.wallet_count ? `${data.whale.wallet_count} 지갑, ${data.whale.holding_pct?.toFixed(1) || 0}%` : '-';
+
+                document.getElementById('ai-fractal').textContent = data.fractal?.pattern || '-';
+                document.getElementById('ai-fractal-detail').textContent = data.fractal?.strength ? `강도 ${data.fractal.strength.toFixed(0)}%` : '-';
 
                 // 거래 추천
-                document.getElementById('ai-entry').textContent = `$${data.trading.entry_price.toLocaleString()}`;
-                document.getElementById('ai-sl').textContent = `$${data.trading.stop_loss.toLocaleString()}`;
-                document.getElementById('ai-tp').textContent = `$${data.trading.take_profit.toLocaleString()}`;
+                document.getElementById('ai-entry').textContent = data.trading?.entry_price ? `$${data.trading.entry_price.toLocaleString()}` : '-';
+                document.getElementById('ai-sl').textContent = data.trading?.stop_loss ? `$${data.trading.stop_loss.toLocaleString()}` : '-';
+                document.getElementById('ai-tp').textContent = data.trading?.take_profit ? `$${data.trading.take_profit.toLocaleString()}` : '-';
 
             } catch (e) {
                 console.error('selectCoin API error:', e);
