@@ -1419,53 +1419,83 @@
         document.addEventListener('DOMContentLoaded', () => {
             // ... (기존 초기화 코드)
 
-            // ========== 코인 검색 기능 ==========
-            const coinDatabase = [
-                // 메이저 코인
-                { symbol: 'BTC', name: 'Bitcoin', sector: 'L1' },
-                { symbol: 'ETH', name: 'Ethereum', sector: 'L1' },
-                { symbol: 'SOL', name: 'Solana', sector: 'L1' },
-                { symbol: 'XRP', name: 'Ripple', sector: 'L1' },
-                { symbol: 'BNB', name: 'BNB', sector: 'Exchange' },
-                { symbol: 'ADA', name: 'Cardano', sector: 'L1' },
-                { symbol: 'AVAX', name: 'Avalanche', sector: 'L1' },
-                { symbol: 'DOT', name: 'Polkadot', sector: 'L1' },
-                { symbol: 'LINK', name: 'Chainlink', sector: 'DeFi' },
-                { symbol: 'MATIC', name: 'Polygon', sector: 'L2' },
-                // 밈 코인
-                { symbol: 'DOGE', name: 'Dogecoin', sector: 'Meme' },
-                { symbol: 'SHIB', name: 'Shiba Inu', sector: 'Meme' },
-                { symbol: 'PEPE', name: 'Pepe', sector: 'Meme' },
-                { symbol: 'BONK', name: 'Bonk', sector: 'Meme' },
-                { symbol: 'WIF', name: 'Dogwifhat', sector: 'Meme' },
-                { symbol: 'FLOKI', name: 'Floki', sector: 'Meme' },
-                // 기타
-                { symbol: 'SUI', name: 'Sui', sector: 'L1' },
-                { symbol: 'OP', name: 'Optimism', sector: 'L2' },
-                { symbol: 'ARB', name: 'Arbitrum', sector: 'L2' },
-                { symbol: 'NEAR', name: 'Near Protocol', sector: 'L1' },
-                { symbol: 'APT', name: 'Aptos', sector: 'L1' },
-                { symbol: 'UNI', name: 'Uniswap', sector: 'DeFi' },
-                { symbol: 'ATOM', name: 'Cosmos', sector: 'L1' },
-                { symbol: 'FIL', name: 'Filecoin', sector: 'Storage' },
-                { symbol: 'TRX', name: 'Tron', sector: 'L1' },
-                { symbol: 'TON', name: 'Toncoin', sector: 'L1' },
-                { symbol: 'LTC', name: 'Litecoin', sector: 'L1' },
-                { symbol: 'BCH', name: 'Bitcoin Cash', sector: 'L1' },
-                { symbol: 'FTM', name: 'Fantom', sector: 'L1' },
-                { symbol: 'INJ', name: 'Injective', sector: 'DeFi' },
-                { symbol: 'AAVE', name: 'Aave', sector: 'DeFi' },
-                { symbol: 'MKR', name: 'Maker', sector: 'DeFi' },
-                { symbol: 'CRV', name: 'Curve', sector: 'DeFi' },
-                { symbol: 'SAND', name: 'The Sandbox', sector: 'GameFi' },
-                { symbol: 'MANA', name: 'Decentraland', sector: 'GameFi' },
-                { symbol: 'AXS', name: 'Axie Infinity', sector: 'GameFi' },
-                { symbol: 'GALA', name: 'Gala', sector: 'GameFi' },
-                { symbol: 'IMX', name: 'Immutable', sector: 'L2' },
-                { symbol: 'RENDER', name: 'Render', sector: 'AI' },
-                { symbol: 'FET', name: 'Fetch.ai', sector: 'AI' },
-                { symbol: 'AGIX', name: 'SingularityNET', sector: 'AI' }
-            ];
+            // ========== 코인 검색 기능 (모든 코인 지원) ==========
+            let coinDatabase = [];  // 동적으로 로드됨
+
+            // CoinGecko에서 Top 250 코인 로드
+            async function loadCoinDatabase() {
+                try {
+                    // CoinGecko API - Top 250 코인
+                    const res = await fetch('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=250&page=1&sparkline=false');
+                    const data = await res.json();
+
+                    coinDatabase = data.map(coin => ({
+                        symbol: coin.symbol.toUpperCase(),
+                        name: coin.name,
+                        id: coin.id,
+                        sector: getSector(coin.id, coin.symbol.toUpperCase()),
+                        price: coin.current_price,
+                        change: coin.price_change_percentage_24h || 0
+                    }));
+
+                    console.log(`✅ ${coinDatabase.length}개 코인 로드 완료`);
+                } catch (e) {
+                    console.warn('CoinGecko API 오류, 기본 목록 사용:', e);
+                    // 폴백: 기본 코인 목록
+                    coinDatabase = [
+                        { symbol: 'BTC', name: 'Bitcoin', sector: 'L1' },
+                        { symbol: 'ETH', name: 'Ethereum', sector: 'L1' },
+                        { symbol: 'SOL', name: 'Solana', sector: 'L1' },
+                        { symbol: 'XRP', name: 'Ripple', sector: 'L1' },
+                        { symbol: 'BNB', name: 'BNB', sector: 'Exchange' },
+                        { symbol: 'ADA', name: 'Cardano', sector: 'L1' },
+                        { symbol: 'DOGE', name: 'Dogecoin', sector: 'Meme' },
+                        { symbol: 'AVAX', name: 'Avalanche', sector: 'L1' },
+                        { symbol: 'DOT', name: 'Polkadot', sector: 'L1' },
+                        { symbol: 'LINK', name: 'Chainlink', sector: 'DeFi' },
+                        { symbol: 'MATIC', name: 'Polygon', sector: 'L2' },
+                        { symbol: 'SHIB', name: 'Shiba Inu', sector: 'Meme' },
+                        { symbol: 'PEPE', name: 'Pepe', sector: 'Meme' },
+                        { symbol: 'BONK', name: 'Bonk', sector: 'Meme' },
+                        { symbol: 'WIF', name: 'Dogwifhat', sector: 'Meme' },
+                        { symbol: 'SUI', name: 'Sui', sector: 'L1' },
+                        { symbol: 'OP', name: 'Optimism', sector: 'L2' },
+                        { symbol: 'ARB', name: 'Arbitrum', sector: 'L2' },
+                        { symbol: 'NEAR', name: 'Near Protocol', sector: 'L1' },
+                        { symbol: 'APT', name: 'Aptos', sector: 'L1' }
+                    ];
+                }
+            }
+
+            // 섹터 분류 함수
+            function getSector(id, symbol) {
+                const sectors = {
+                    // Meme
+                    'dogecoin': 'Meme', 'shiba-inu': 'Meme', 'pepe': 'Meme', 'bonk': 'Meme',
+                    'dogwifcoin': 'Meme', 'floki': 'Meme', 'baby-doge-coin': 'Meme',
+                    // L2
+                    'matic-network': 'L2', 'arbitrum': 'L2', 'optimism': 'L2', 'immutable-x': 'L2',
+                    'polygon': 'L2', 'mantle': 'L2', 'base': 'L2',
+                    // DeFi
+                    'uniswap': 'DeFi', 'aave': 'DeFi', 'chainlink': 'DeFi', 'maker': 'DeFi',
+                    'curve-dao-token': 'DeFi', 'lido-dao': 'DeFi', 'compound': 'DeFi',
+                    // Exchange
+                    'binancecoin': 'Exchange', 'okb': 'Exchange', 'kucoin-token': 'Exchange',
+                    'crypto-com-chain': 'Exchange', 'leo-token': 'Exchange',
+                    // GameFi
+                    'the-sandbox': 'GameFi', 'decentraland': 'GameFi', 'axie-infinity': 'GameFi',
+                    'gala': 'GameFi', 'enjincoin': 'GameFi', 'illuvium': 'GameFi',
+                    // AI
+                    'render-token': 'AI', 'fetch-ai': 'AI', 'singularitynet': 'AI',
+                    'ocean-protocol': 'AI', 'bittensor': 'AI',
+                    // Storage
+                    'filecoin': 'Storage', 'arweave': 'Storage',
+                };
+                return sectors[id] || 'L1';
+            }
+
+            // 초기 로드
+            loadCoinDatabase();
 
             const searchInput = document.getElementById('coin-search-input');
             const searchResults = document.getElementById('search-results');
@@ -1491,7 +1521,15 @@
                 ).slice(0, 10);
 
                 if (filtered.length === 0) {
-                    searchResults.innerHTML = '<div class="p-3 text-gray-400 text-sm">검색 결과가 없습니다</div>';
+                    searchResults.innerHTML = `
+                        <div class="p-3 text-gray-400 text-sm">
+                            <div>목록에 없는 코인입니다</div>
+                            <div class="mt-2 flex items-center gap-2">
+                                <span class="text-purple-400 font-bold">${query}</span>
+                                <span class="text-xs">← Enter 키를 누르면 직접 검색</span>
+                            </div>
+                            <div class="text-xs text-gray-500 mt-1">모든 TradingView 지원 코인 검색 가능</div>
+                        </div>`;
                 } else {
                     searchResults.innerHTML = filtered.map((coin, idx) => `
                         <div class="search-result-item px-3 py-2 hover:bg-gray-800 cursor-pointer flex items-center gap-2 ${idx === selectedIndex ? 'bg-gray-800' : ''}" 
