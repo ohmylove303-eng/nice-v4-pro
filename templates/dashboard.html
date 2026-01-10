@@ -612,7 +612,13 @@
                 style="height: calc(100vh - 180px); display: flex; flex-direction: column; overflow: hidden;">
                 <!-- 상단 요약 카드 (고정 높이) -->
                 <div class="glass-card p-3 mb-2" style="flex-shrink: 0;">
-                    <h3 class="font-bold text-lg text-emerald-400 mb-2">🟢 TYPE A 신호 포착!</h3>
+                    <div class="flex items-center justify-between mb-2">
+                        <h3 class="font-bold text-lg text-emerald-400" id="ai-report-signal">🟢 TYPE A 신호 포착!</h3>
+                        <button id="refresh-ai-report" onclick="refreshAIReport()"
+                            class="px-3 py-1 bg-purple-600 hover:bg-purple-500 rounded-lg text-white text-sm flex items-center gap-1 transition-all">
+                            🔄 새로고침
+                        </button>
+                    </div>
                     <div class="grid grid-cols-4 gap-3 text-sm">
                         <div>
                             <div class="text-gray-400 text-xs">신뢰도</div>
@@ -863,6 +869,39 @@
         }
 
         let currentChartInstance = null; // 차트 인스턴스 전역 관리
+
+        // AI 리포트 새로고침 버튼 핸들러
+        async function refreshAIReport() {
+            const btn = document.getElementById('refresh-ai-report');
+            if (btn) {
+                btn.innerHTML = '⏳ 로딩...';
+                btn.disabled = true;
+            }
+
+            try {
+                await loadAIReport();
+                await loadExpertAnalysis();
+
+                // 갱신 시간 업데이트
+                const now = new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                if (btn) btn.innerHTML = `✅ ${now}`;
+
+                setTimeout(() => {
+                    if (btn) btn.innerHTML = '🔄 새로고침';
+                    btn.disabled = false;
+                }, 2000);
+            } catch (e) {
+                console.error('AI Report refresh error:', e);
+                if (btn) {
+                    btn.innerHTML = '❌ 실패';
+                    setTimeout(() => {
+                        btn.innerHTML = '🔄 새로고침';
+                        btn.disabled = false;
+                    }, 2000);
+                }
+            }
+        }
+
         // AI 리포트 데이터 로드 (레이어 차트 + 요약)
         async function loadAIReport() {
             const ctx = document.getElementById('layerChart');
