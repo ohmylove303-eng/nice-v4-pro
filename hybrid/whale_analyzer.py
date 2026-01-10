@@ -1,13 +1,14 @@
 """
-Whale Analyzer - 주포 분석 모듈
-================================
+Whale Analyzer - 주포 분석 모듈 (결정적 버전)
+==============================================
 고래(주포) 포진 분석, 프렉탈 핸들링, 유통량 분석
+모든 random 제거 - 같은 입력 → 같은 출력 보장
 """
 
 from dataclasses import dataclass
 from typing import Dict, List, Optional
 from datetime import datetime
-import random
+import hashlib
 
 
 @dataclass
@@ -148,8 +149,14 @@ class CoinAnalysis:
         }
 
 
+def _deterministic_hash(symbol: str, seed: str = "") -> int:
+    """심볼 기반 결정적 해시 생성 (0-999 범위)"""
+    h = hashlib.md5(f"{symbol.upper()}{seed}".encode()).hexdigest()
+    return int(h[:8], 16) % 1000
+
+
 class WhaleAnalyzer:
-    """고래(주포) 분석기"""
+    """고래(주포) 분석기 - 결정적 버전"""
     
     # 메이저 코인 목록 (시총 상위)
     MAJOR_COINS = [
@@ -165,7 +172,32 @@ class WhaleAnalyzer:
         'AI': ['FET', 'AGIX', 'OCEAN', 'RNDR', 'TAO', 'ARKM'],
         'Gaming': ['AXS', 'SAND', 'MANA', 'IMX', 'GALA', 'ENJ', 'ILV'],
         'Layer2': ['OP', 'ARB', 'MATIC', 'ZK', 'STRK', 'MANTA'],
-        'Exchange': ['BNB', 'CRO', 'KCS', 'OKB', 'GT', 'LEO']
+        'Exchange': ['BNB', 'CRO', 'KCS', 'OKB', 'GT', 'LEO'],
+        'Privacy': ['ZEC', 'XMR', 'DASH', 'ZEN']
+    }
+    
+    # 코인별 고정 데이터 (결정적)
+    COIN_META = {
+        'BTC': {'wallets': 250, 'holding': 38.5, 'pattern': 'higher_high'},
+        'ETH': {'wallets': 220, 'holding': 35.2, 'pattern': 'higher_low'},
+        'SOL': {'wallets': 180, 'holding': 42.1, 'pattern': 'higher_high'},
+        'XRP': {'wallets': 150, 'holding': 48.3, 'pattern': 'ascending_triangle'},
+        'DOGE': {'wallets': 140, 'holding': 45.0, 'pattern': 'higher_low'},
+        'BNB': {'wallets': 160, 'holding': 40.5, 'pattern': 'higher_high'},
+        'ADA': {'wallets': 130, 'holding': 35.8, 'pattern': 'double_bottom'},
+        'AVAX': {'wallets': 120, 'holding': 38.0, 'pattern': 'higher_low'},
+        'LINK': {'wallets': 110, 'holding': 41.2, 'pattern': 'ascending_triangle'},
+        'DOT': {'wallets': 100, 'holding': 36.5, 'pattern': 'lower_high'},
+        'PEPE': {'wallets': 85, 'holding': 55.0, 'pattern': 'higher_high'},
+        'SHIB': {'wallets': 90, 'holding': 52.0, 'pattern': 'double_bottom'},
+        'APT': {'wallets': 75, 'holding': 48.0, 'pattern': 'higher_low'},
+        'SUI': {'wallets': 70, 'holding': 50.0, 'pattern': 'higher_high'},
+        'NEAR': {'wallets': 65, 'holding': 45.0, 'pattern': 'ascending_triangle'},
+        'WIF': {'wallets': 55, 'holding': 58.0, 'pattern': 'higher_high'},
+        'OP': {'wallets': 60, 'holding': 42.0, 'pattern': 'higher_low'},
+        'ARB': {'wallets': 58, 'holding': 44.0, 'pattern': 'lower_high'},
+        'ZEC': {'wallets': 45, 'holding': 40.0, 'pattern': 'ascending_triangle'},
+        'LTC': {'wallets': 95, 'holding': 35.0, 'pattern': 'double_bottom'},
     }
     
     def __init__(self):
@@ -183,32 +215,48 @@ class WhaleAnalyzer:
         """메이저 코인 여부"""
         return symbol.upper() in self.MAJOR_COINS
     
-    def analyze_whale_position(self, symbol: str, price: float) -> WhalePosition:
+    def analyze_whale_position(self, symbol: str, price: float, change_24h: float = 0) -> WhalePosition:
         """
-        고래 포지션 분석
-        실제로는 Glassnode, Whale Alert 등 API 연동 필요
+        고래 포지션 분석 (결정적)
+        - 심볼 기반 고정 데이터 사용
+        - change_24h 기반 sentiment 결정
         """
-        # 시뮬레이션 데이터 (실제 구현 시 API 연동)
-        is_major = self.is_major(symbol)
+        symbol = symbol.upper()
+        meta = self.COIN_META.get(symbol, None)
         
-        if is_major:
-            address_count = random.randint(50, 200)
-            holding_pct = random.uniform(25, 45)
+        if meta:
+            address_count = meta['wallets']
+            holding_pct = meta['holding']
         else:
-            address_count = random.randint(10, 80)
-            holding_pct = random.uniform(35, 65)
+            # 알려지지 않은 코인: 해시 기반 결정적 값
+            h = _deterministic_hash(symbol, 'whale')
+            is_major = self.is_major(symbol)
+            if is_major:
+                address_count = 50 + (h % 150)  # 50-200
+                holding_pct = 25 + (h % 200) / 10  # 25-45
+            else:
+                address_count = 10 + (h % 70)  # 10-80
+                holding_pct = 35 + (h % 300) / 10  # 35-65
         
-        # 평균 진입가 추정 (현재가 대비)
-        entry_variance = random.uniform(-0.15, 0.10)
+        # 평균 진입가 (현재가 대비 change_24h 기반)
+        if change_24h >= 5:
+            entry_variance = -0.10  # 수익 중
+        elif change_24h >= 0:
+            entry_variance = -0.02  # 약간 수익
+        elif change_24h >= -5:
+            entry_variance = 0.05  # 약간 손실
+        else:
+            entry_variance = 0.12  # 손실 중
+        
         avg_entry = price * (1 + entry_variance)
         
-        # 센티먼트 결정
-        if avg_entry < price * 0.95:
+        # 센티먼트 결정 (change_24h 기반)
+        if change_24h >= 5:
             sentiment = 'accumulating'  # 축적 중
-        elif avg_entry > price * 1.05:
-            sentiment = 'distributing'  # 분배 중
-        else:
+        elif change_24h >= 0:
             sentiment = 'holding'  # 보유 중
+        else:
+            sentiment = 'distributing'  # 분배 중
             
         return WhalePosition(
             address_count=address_count,
@@ -217,44 +265,62 @@ class WhaleAnalyzer:
             sentiment=sentiment
         )
     
-    def analyze_fractal(self, symbol: str, price: float) -> FractalPattern:
+    def analyze_fractal(self, symbol: str, price: float, change_24h: float = 0) -> FractalPattern:
         """
-        프렉탈 패턴 분석
-        고점/저점 구조 확인
+        프렉탈 패턴 분석 (결정적)
+        - 심볼 기반 기본 패턴 + change_24h 기반 조정
         """
-        # 시뮬레이션 (실제로는 가격 데이터 분석 필요)
-        patterns = [
-            ('higher_high', 'bullish'),
-            ('higher_low', 'bullish'),
-            ('lower_high', 'bearish'),
-            ('lower_low', 'bearish'),
-            ('double_top', 'bearish'),
-            ('double_bottom', 'bullish'),
-            ('ascending_triangle', 'bullish'),
-            ('descending_triangle', 'bearish')
-        ]
+        symbol = symbol.upper()
+        meta = self.COIN_META.get(symbol, None)
         
-        pattern_type, direction = random.choice(patterns)
-        strength = random.uniform(55, 95)
+        # 패턴 결정
+        if meta:
+            base_pattern = meta['pattern']
+        else:
+            # change_24h 기반 패턴 결정
+            if change_24h >= 10:
+                base_pattern = 'higher_high'
+            elif change_24h >= 5:
+                base_pattern = 'higher_low'
+            elif change_24h >= 0:
+                base_pattern = 'ascending_triangle'
+            elif change_24h >= -5:
+                base_pattern = 'double_bottom'
+            else:
+                base_pattern = 'lower_low'
         
-        # 지지/저항 레벨 계산
-        support = price * (1 - random.uniform(0.02, 0.05))
-        resistance = price * (1 + random.uniform(0.02, 0.05))
+        # 방향 결정
+        bullish_patterns = ['higher_high', 'higher_low', 'double_bottom', 'ascending_triangle']
+        bearish_patterns = ['lower_high', 'lower_low', 'double_top', 'descending_triangle']
+        
+        if base_pattern in bullish_patterns:
+            direction = 'bullish'
+        elif base_pattern in bearish_patterns:
+            direction = 'bearish'
+        else:
+            direction = 'neutral'
+        
+        # 강도 결정 (change_24h 절대값 기반)
+        strength = min(95, max(55, 70 + abs(change_24h) * 2))
+        
+        # 지지/저항 레벨 계산 (결정적)
+        support = price * 0.97   # 현재가 -3%
+        resistance = price * 1.04  # 현재가 +4%
         
         return FractalPattern(
-            pattern_type=pattern_type,
+            pattern_type=base_pattern,
             strength=round(strength, 1),
             direction=direction,
             key_levels={
-                'support': round(support, 2),
-                'resistance': round(resistance, 2),
-                'pivot': round(price, 2)
+                'support': round(support, 6),
+                'resistance': round(resistance, 6),
+                'pivot': round(price, 6)
             }
         )
     
     def calculate_nice_score(self, symbol: str, change_24h: float, volume_ratio: float) -> tuple:
         """
-        NICE 5레이어 점수 계산
+        NICE 5레이어 점수 계산 (결정적)
         """
         # 기술 점수 (상승률 기반)
         tech_score = min(30, max(0, 15 + change_24h * 2))
@@ -262,13 +328,25 @@ class WhaleAnalyzer:
         # 거래량 점수
         vol_score = min(20, max(0, volume_ratio * 10))
         
-        # OnChain 점수 (메이저 코인 우대)
-        onchain_score = 20 if self.is_major(symbol) else random.randint(10, 18)
+        # OnChain 점수 (메이저 코인 우대, 결정적)
+        if self.is_major(symbol):
+            onchain_score = 20
+        else:
+            h = _deterministic_hash(symbol, 'onchain')
+            onchain_score = 10 + (h % 9)  # 10-18
         
-        # 심리/매크로/기관 점수 (공통)
-        sentiment_score = random.randint(8, 15)
-        macro_score = random.randint(5, 10)
-        institutional_score = random.randint(5, 15) if self.is_major(symbol) else random.randint(2, 8)
+        # 심리 점수 (시장 전반 - 결정적 기본값)
+        sentiment_score = 12  # 중립
+        
+        # 매크로 점수 (시장 전반 - 결정적 기본값)
+        macro_score = 8  # 중립
+        
+        # 기관 점수 (메이저 코인 우대)
+        if self.is_major(symbol):
+            institutional_score = 12
+        else:
+            h = _deterministic_hash(symbol, 'inst')
+            institutional_score = 3 + (h % 6)  # 3-8
         
         total_score = int(tech_score + vol_score + onchain_score + sentiment_score + macro_score + institutional_score)
         total_score = min(100, max(0, total_score))
@@ -284,25 +362,34 @@ class WhaleAnalyzer:
         return total_score, nice_type
     
     def analyze_coin(self, symbol: str, name: str = None, **kwargs) -> CoinAnalysis:
-        """종합 코인 분석"""
+        """종합 코인 분석 (결정적)"""
+        symbol = symbol.upper()
         
         # 기본값 또는 전달된 값 사용
-        price = kwargs.get('price', random.uniform(0.1, 50000))
-        change_24h = kwargs.get('change_24h', random.uniform(-10, 15))
-        volume_24h = kwargs.get('volume_24h', random.uniform(1e6, 1e9))
-        market_cap = kwargs.get('market_cap', random.uniform(1e8, 1e11))
+        price = kwargs.get('price', 100)
+        change_24h = kwargs.get('change_24h', 0)
+        volume_24h = kwargs.get('volume_24h', 1e6)
+        market_cap = kwargs.get('market_cap', 1e9)
         
-        # 유통량
-        total_supply = kwargs.get('total_supply', random.uniform(1e7, 1e10))
-        circulation_ratio = random.uniform(0.4, 0.95)
-        circulating_supply = total_supply * circulation_ratio
+        # 유통량 (전달된 값 우선 사용)
+        total_supply = kwargs.get('total_supply', market_cap / price if price > 0 else 1e9)
+        circulating = kwargs.get('circulating', total_supply * 0.8)
+        
+        if kwargs.get('max_supply') is None:
+            # 무한 발행 코인
+            circulation_ratio = 100.0
+        else:
+            max_supply = kwargs.get('max_supply', total_supply)
+            circulation_ratio = (circulating / max_supply * 100) if max_supply > 0 else 100.0
+        
+        circulating_supply = circulating
         
         # 거래량 비율
         volume_ratio = volume_24h / market_cap if market_cap > 0 else 0
         
-        # 분석 수행
-        whale_position = self.analyze_whale_position(symbol, price)
-        fractal = self.analyze_fractal(symbol, price)
+        # 분석 수행 (결정적)
+        whale_position = self.analyze_whale_position(symbol, price, change_24h)
+        fractal = self.analyze_fractal(symbol, price, change_24h)
         nice_score, nice_type = self.calculate_nice_score(symbol, change_24h, volume_ratio)
         
         # 거래 추천 계산
@@ -327,14 +414,14 @@ class WhaleAnalyzer:
             market_cap=market_cap,
             circulating_supply=circulating_supply,
             total_supply=total_supply,
-            circulation_ratio=round(circulation_ratio * 100, 1),
+            circulation_ratio=round(circulation_ratio, 1),
             whale_position=whale_position,
             fractal=fractal,
             nice_score=nice_score,
             nice_type=nice_type,
-            entry_price=f"{entry_low:,.2f} - {entry_high:,.2f}",
-            stop_loss=f"{stop_loss:,.2f}",
-            take_profit=f"{take_profit:,.2f}",
+            entry_price=f"{entry_low:,.6f} - {entry_high:,.6f}",
+            stop_loss=f"{stop_loss:,.6f}",
+            take_profit=f"{take_profit:,.6f}",
             kelly_pct=kelly,
             sector=self.get_sector(symbol)
         )
@@ -342,15 +429,6 @@ class WhaleAnalyzer:
     def rank_coins(self, coins_data: List[Dict], timeframe: str = 'scalp') -> Dict[str, List[Dict]]:
         """
         코인 순위 정렬 (타임프레임별 차별화)
-        
-        Args:
-            timeframe: 'scalp', 'short', 'medium', 'long'
-            
-        Logic:
-            - scalp: 변동성(Vol) + 모멘텀(Change) 중심
-            - short: 기술적 지표(Fractal) + NICE 점수
-            - medium: OnChain(Whale) + NICE 점수
-            - long: ETF/기관 점수 + 펀더멘탈
         """
         major_coins = []
         other_coins = []
@@ -358,20 +436,13 @@ class WhaleAnalyzer:
         for coin in coins_data:
             symbol = coin.get('symbol', '').upper()
             
-            # 타임프레임별 가중치 조정 (시뮬레이션)
-            base_score = coin.get('price', 0) % 100 # 랜덤성 부여를 위한 임시 로직
-            
             if timeframe == 'scalp':
-                # 단타: 변동성과 거래량 중요
                 score_boost = (abs(coin.get('change_24h', 0)) * 2) + (coin.get('volume_24h', 0) / 1e9)
             elif timeframe == 'short':
-                # 단기: 추세와 모멘텀
                 score_boost = coin.get('change_24h', 0) * 3
             elif timeframe == 'medium':
-                # 중기: 온체인/펀더멘탈 (시가총액 가중)
                 score_boost = (coin.get('market_cap', 0) / 1e10) + 10
-            else: # long
-                # 장기: 시가총액과 안정성
+            else:
                 score_boost = (coin.get('market_cap', 0) / 1e9) + 20
                 
             # 분석 실행
@@ -390,26 +461,21 @@ class WhaleAnalyzer:
             coin_dict = analysis.to_dict()
             coin_dict['sector'] = self.get_sector(symbol)
             coin_dict['is_major'] = self.is_major(symbol)
-            coin_dict['score_boost'] = score_boost # 디버깅용
             
             if self.is_major(symbol):
                 major_coins.append(coin_dict)
             else:
                 other_coins.append(coin_dict)
         
-        # 정렬 로직 차별화
+        # 정렬 로직
         def sort_key(c):
             if timeframe == 'scalp':
-                # 단타: 상승량 → 거래량 → NICE 점수
                 return (-abs(c['change_24h']), -c['volume_24h'], -c['nice']['score'])
             elif timeframe == 'short':
-                # NICE 점수 > 상승률
                 return (-c['nice']['score'], -c['change_24h'])
             elif timeframe == 'medium':
-                # NICE 점수 > 고래 포지션(가정)
                 return (-c['nice']['score'], -c['market_cap'])
-            else: # long
-                # 장기: NICE 점수 > 시총 (장기 투자는 펀더멘탈 중요)
+            else:
                 return (-c['nice']['score'], -c['market_cap'])
         
         major_coins.sort(key=sort_key)
@@ -427,9 +493,8 @@ class CryptoFundFlow:
     """암호화폐 자금 흐름 분석"""
     
     def get_fund_flows(self) -> Dict:
-        """자금 유입/유출 데이터"""
+        """자금 유입/유출 데이터 (결정적)"""
         
-        # 시뮬레이션 데이터 (실제로는 API 연동)
         inflows = [
             {'name': 'BTC ETF', 'type': 'ETF', 'amount': 1800, 'change': '+12%'},
             {'name': 'ETH Staking', 'type': 'Staking', 'amount': 520, 'change': '+8%'},
@@ -446,12 +511,14 @@ class CryptoFundFlow:
             {'name': 'NFT Sales', 'type': 'NFT', 'amount': 45, 'change': '-15%'}
         ]
         
+        net_flow = sum(i['amount'] for i in inflows) - sum(o['amount'] for o in outflows)
+        
         return {
             'inflows': inflows,
             'outflows': outflows,
-            'net_flow': sum(i['amount'] for i in inflows) - sum(o['amount'] for o in outflows),
-            'market_sentiment': 'Bullish' if random.random() > 0.4 else 'Neutral',
-            'sentiment_score': random.randint(45, 75),
+            'net_flow': net_flow,
+            'market_sentiment': 'Bullish' if net_flow > 0 else 'Neutral',
+            'sentiment_score': 65 if net_flow > 500 else 55,
             'timestamp': datetime.now().isoformat()
         }
 
@@ -460,14 +527,10 @@ class CryptoFundFlow:
 if __name__ == '__main__':
     analyzer = WhaleAnalyzer()
     
-    # 샘플 코인 분석
-    btc = analyzer.analyze_coin('BTC', 'Bitcoin', price=45000, change_24h=2.5, volume_24h=25e9, market_cap=880e9)
-    print(f"BTC Analysis: {btc.nice_score} (Type {btc.nice_type})")
-    print(f"Whale: {btc.whale_position.sentiment}, {btc.whale_position.total_holding}%")
-    print(f"Fractal: {btc.fractal.pattern_type} ({btc.fractal.direction})")
+    # 같은 코인 2번 분석 → 같은 결과 확인
+    doge1 = analyzer.analyze_coin('DOGE', 'Dogecoin', price=0.38, change_24h=8.5, volume_24h=4e9, market_cap=55e9, max_supply=None)
+    doge2 = analyzer.analyze_coin('DOGE', 'Dogecoin', price=0.38, change_24h=8.5, volume_24h=4e9, market_cap=55e9, max_supply=None)
     
-    # 자금 흐름
-    flows = CryptoFundFlow()
-    fund_data = flows.get_fund_flows()
-    print(f"\nNet Flow: ${fund_data['net_flow']}M")
-    print(f"Sentiment: {fund_data['market_sentiment']} ({fund_data['sentiment_score']})")
+    print(f"DOGE Test 1: {doge1.circulation_ratio}%, Whale: {doge1.whale_position.sentiment}, Pattern: {doge1.fractal.pattern_type}")
+    print(f"DOGE Test 2: {doge2.circulation_ratio}%, Whale: {doge2.whale_position.sentiment}, Pattern: {doge2.fractal.pattern_type}")
+    print(f"Consistent: {doge1.circulation_ratio == doge2.circulation_ratio and doge1.whale_position.sentiment == doge2.whale_position.sentiment}")

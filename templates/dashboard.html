@@ -328,7 +328,7 @@
                             <!-- TradingView Widget -->
                             <div id="tv-widget-container" style="width: 100%; height: 100%;"></div>
                         </div>
-                        <!-- 지표 바 -->
+                        <!-- 지표 바 (확장) -->
                         <div class="flex gap-2 mt-2 flex-wrap">
                             <span class="indicator-btn active">BB (20,2)</span>
                             <span class="indicator-btn active">RSI (14)</span>
@@ -336,6 +336,15 @@
                             <span class="indicator-btn active">EMA (20/50/200)</span>
                             <span class="indicator-btn active">Volume</span>
                             <span class="indicator-btn active">Stoch RSI</span>
+                            <!-- 새 지표: Elliott Wave, Fibonacci, Trendline -->
+                            <span class="indicator-btn active"
+                                style="background: rgba(147, 51, 234, 0.3); border-color: #a855f7;">ZigZag (파동)</span>
+                            <span class="indicator-btn active"
+                                style="background: rgba(234, 179, 8, 0.3); border-color: #eab308;">Pivot (피보나치)</span>
+                            <span class="indicator-btn active"
+                                style="background: rgba(6, 182, 212, 0.3); border-color: #06b6d4;">Ichimoku (구름)</span>
+                            <span class="indicator-btn active"
+                                style="background: rgba(236, 72, 153, 0.3); border-color: #ec4899;">PSAR (추세)</span>
                         </div>
                     </div>
 
@@ -607,7 +616,7 @@
             { symbol: 'WIF', name: 'Dogwifhat', change: 18.5, sector: 'Meme', size: 1 }
         ];
 
-        // TradingView 위젯 초기화 (모든 지표 포함)
+        // TradingView 위젯 초기화 (Elliott Wave, Fibonacci, 추세선 포함)
         function initTradingView(symbol = 'BTC', interval = '5') {
             const container = document.getElementById('tv-widget-container');
             container.innerHTML = '';
@@ -637,19 +646,38 @@
                 "hide_legend": false,
                 "save_image": false,
                 "container_id": "tv-widget-container",
+                "withdateranges": true,
+                "allow_symbol_change": true,
+                "details": true,
+                "hotlist": true,
+                "calendar": false,
                 "studies": [
-                    "BB@tv-basicstudies",           // 볼린저 밴드
-                    "RSI@tv-basicstudies",          // RSI
-                    "MACD@tv-basicstudies",         // MACD
-                    "MAExp@tv-basicstudies",        // EMA 20
-                    "MAExp@tv-basicstudies",        // EMA 50
-                    "MAExp@tv-basicstudies",        // EMA 200
-                    "Volume@tv-basicstudies",       // 거래량
-                    "StochasticRSI@tv-basicstudies" // 스토캐스틱 RSI
+                    // 기본 지표
+                    "BB@tv-basicstudies",               // 볼린저 밴드
+                    "RSI@tv-basicstudies",              // RSI
+                    "MACD@tv-basicstudies",             // MACD
+                    "Volume@tv-basicstudies",           // 거래량
+                    "StochasticRSI@tv-basicstudies",    // 스토캐스틱 RSI
+
+                    // 이동평균선 (EMA)
+                    "MAExp@tv-basicstudies",            // EMA 20
+                    "MAExp@tv-basicstudies",            // EMA 50
+                    "MAExp@tv-basicstudies",            // EMA 200
+
+                    // 추가 기술적 지표 - Elliott Wave, Fibonacci, Trendline
+                    "PSAR@tv-basicstudies",             // Parabolic SAR (추세)
+                    "PivotPointsStandard@tv-basicstudies", // 피봇 포인트 (지지/저항)
+                    "ZigZag@tv-basicstudies",           // 지그재그 (파동 패턴)
+                    "IchimokuCloud@tv-basicstudies",    // 일목균형표 (구름)
+                    "ADX@tv-basicstudies"               // ADX (추세 강도)
                 ],
                 "studies_overrides": {
                     "volume.volume.color.0": "#ef4444",
-                    "volume.volume.color.1": "#10b981"
+                    "volume.volume.color.1": "#10b981",
+                    // EMA 설정
+                    "moving average exponential.length": 20,
+                    // ZigZag 설정 (파동 분석용)
+                    "zigzag.deviation": 5
                 }
             });
 
