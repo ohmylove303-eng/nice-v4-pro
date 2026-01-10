@@ -685,7 +685,7 @@
         let tvWidget = null;
 
         // 시장 지도 데이터
-        const marketMapData = [
+        let marketMapData = [
             { symbol: 'BTC', name: 'Bitcoin', change: 2.5, sector: 'L1', size: 4 },
             { symbol: 'ETH', name: 'Ethereum', change: 3.2, sector: 'L1', size: 3 },
             { symbol: 'SOL', name: 'Solana', change: 5.1, sector: 'L1', size: 2 },
@@ -999,6 +999,20 @@
             return `$${vol?.toFixed(0) || 0}`;
         }
 
+        // CoinGecko API ID 매핑
+        function getCoinGeckoId(symbol) {
+            const idMap = {
+                'BTC': 'bitcoin', 'ETH': 'ethereum', 'SOL': 'solana',
+                'XRP': 'ripple', 'BNB': 'binancecoin', 'DOGE': 'dogecoin',
+                'ADA': 'cardano', 'AVAX': 'avalanche-2', 'DOT': 'polkadot',
+                'LINK': 'chainlink', 'MATIC': 'matic-network', 'SHIB': 'shiba-inu',
+                'PEPE': 'pepe', 'BONK': 'bonk', 'WIF': 'dogwifcoin', 'FLOKI': 'floki',
+                'SUI': 'sui', 'OP': 'optimism', 'ARB': 'arbitrum', 'NEAR': 'near',
+                'APT': 'aptos', 'UNI': 'uniswap', 'TRX': 'tron', 'TON': 'the-open-network'
+            };
+            return idMap[symbol.toUpperCase()] || symbol.toLowerCase();
+        }
+
         // 코인 선택 및 UI 업데이트 (API 연동 - 모든 코인 지원)
         async function selectCoin(symbol) {
             selectedCoin = symbol;
@@ -1025,11 +1039,40 @@
                     return;
                 }
 
+                // 가격 데이터 확보 (fallback 로직)
+                let price = data.price || 0;
+                let change = data.change_24h || 0;
+
+                // 가격이 없으면 marketMapData에서 찾기
+                if (!price || price === 0) {
+                    const mapCoin = marketMapData.find(c => c.symbol === symbol);
+                    if (mapCoin && mapCoin.price) {
+                        price = mapCoin.price;
+                    }
+                    if (mapCoin && mapCoin.change) {
+                        change = mapCoin.change;
+                    }
+                }
+
+                // 여전히 가격이 없으면 CoinGecko에서 가져오기
+                if (!price || price === 0) {
+                    try {
+                        const cgRes = await fetch(`https://api.coingecko.com/api/v3/simple/price?ids=${getCoinGeckoId(symbol)}&vs_currencies=usd&include_24hr_change=true`);
+                        const cgData = await cgRes.json();
+                        const coinId = getCoinGeckoId(symbol);
+                        if (cgData[coinId]) {
+                            price = cgData[coinId].usd || 0;
+                            change = cgData[coinId].usd_24h_change || 0;
+                        }
+                    } catch (cgErr) {
+                        console.warn('CoinGecko fallback failed:', cgErr);
+                    }
+                }
+
                 // 상단 정보 업데이트
                 document.getElementById('chart-symbol').textContent = data.symbol || symbol;
                 document.getElementById('chart-name').textContent = data.name || symbol;
-                document.getElementById('chart-price').textContent = data.price ? `$${data.price.toLocaleString()}` : '-';
-                const change = data.change_24h || 0;
+                document.getElementById('chart-price').textContent = price ? `$${price.toLocaleString()}` : '-';
                 document.getElementById('chart-change').textContent = `${change >= 0 ? '+' : ''}${change.toFixed(1)}%`;
                 document.getElementById('chart-change').className = change >= 0 ? 'text-emerald-400 text-sm' : 'text-red-400 text-sm';
                 document.getElementById('selected-coin-name').textContent = `${data.symbol || symbol} ${data.name || ''}`;
@@ -1046,18 +1089,19 @@
                 document.getElementById('ai-fractal').textContent = data.fractal || '-';
                 document.getElementById('ai-fractal-detail').textContent = data.fractal_strength ? `강도 ${data.fractal_strength}%` : '-';
 
-                // 거래 추천 (모든 코인에서 작동)
-                const price = data.price || 0;
-                const entryPrice = data.entry_price || price * 0.98;
-                const stopLoss = data.stop_loss || price * 0.95;
-                const takeProfit = data.take_profit || price * 1.05;
+                // 거래 추천 (모든 코인에서 작동 - price 기반 계산)
+                const entryPrice = data.entry_price || (price * 0.98);
+                const stopLoss = data.stop_loss || (price * 0.95);
+                const takeProfit = data.take_profit || (price * 1.05);
 
-                document.getElementById('ai-entry').textContent = `$${entryPrice.toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
-                document.getElementById('ai-sl').textContent = `$${stopLoss.toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
-                document.getElementById('ai-tp').textContent = `$${takeProfit.toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
+                document.getElementById('ai-entry').textContent = price ? `$${entryPrice.toLocaleString(undefined, { maximumFractionDigits: 6 })}` : '-';
+                document.getElementById('ai-sl').textContent = price ? `$${stopLoss.toLocaleString(undefined, { maximumFractionDigits: 6 })}` : '-';
+                document.getElementById('ai-tp').textContent = price ? `$${takeProfit.toLocaleString(undefined, { maximumFractionDigits: 6 })}` : '-';
 
-                // 4. 파동 분석 패널 업데이트
-                updateWaveAnalysis(symbol, price, change, data);
+                // 4. 파동 분석 패널 업데이트 (가격 데이터 필수)
+                if (price > 0) {
+                    updateWaveAnalysis(symbol, price, change, data);
+                }
 
             } catch (e) {
                 console.error('selectCoin API error:', e);
