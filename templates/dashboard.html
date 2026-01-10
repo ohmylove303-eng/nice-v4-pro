@@ -1569,49 +1569,104 @@
             // ========== 코인 검색 기능 (모든 코인 지원) ==========
             let coinDatabase = [];  // 동적으로 로드됨
 
-            // CoinGecko에서 Top 250 코인 로드
+            // 빗썸 거래소 기준 코인 로드 (빗썸 API 우선, CoinGecko 폴백)
             async function loadCoinDatabase() {
                 try {
-                    // CoinGecko API - Top 250 코인
-                    const res = await fetch('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=250&page=1&sparkline=false');
+                    // 빗썸 API - 모든 상장 코인 조회
+                    const res = await fetch('https://api.bithumb.com/public/ticker/ALL_KRW');
                     const data = await res.json();
 
-                    coinDatabase = data.map(coin => ({
-                        symbol: coin.symbol.toUpperCase(),
-                        name: coin.name,
-                        id: coin.id,
-                        sector: getSector(coin.id, coin.symbol.toUpperCase()),
-                        price: coin.current_price,
-                        change: coin.price_change_percentage_24h || 0
-                    }));
+                    if (data.status === '0000' && data.data) {
+                        const tickers = data.data;
+                        const timestamp = tickers.date;
+                        delete tickers.date; // date 필드 제거
 
-                    console.log(`✅ ${coinDatabase.length}개 코인 로드 완료`);
-                } catch (e) {
-                    console.warn('CoinGecko API 오류, 기본 목록 사용:', e);
-                    // 폴백: 기본 코인 목록
-                    coinDatabase = [
-                        { symbol: 'BTC', name: 'Bitcoin', sector: 'L1' },
-                        { symbol: 'ETH', name: 'Ethereum', sector: 'L1' },
-                        { symbol: 'SOL', name: 'Solana', sector: 'L1' },
-                        { symbol: 'XRP', name: 'Ripple', sector: 'L1' },
-                        { symbol: 'BNB', name: 'BNB', sector: 'Exchange' },
-                        { symbol: 'ADA', name: 'Cardano', sector: 'L1' },
-                        { symbol: 'DOGE', name: 'Dogecoin', sector: 'Meme' },
-                        { symbol: 'AVAX', name: 'Avalanche', sector: 'L1' },
-                        { symbol: 'DOT', name: 'Polkadot', sector: 'L1' },
-                        { symbol: 'LINK', name: 'Chainlink', sector: 'DeFi' },
-                        { symbol: 'MATIC', name: 'Polygon', sector: 'L2' },
-                        { symbol: 'SHIB', name: 'Shiba Inu', sector: 'Meme' },
-                        { symbol: 'PEPE', name: 'Pepe', sector: 'Meme' },
-                        { symbol: 'BONK', name: 'Bonk', sector: 'Meme' },
-                        { symbol: 'WIF', name: 'Dogwifhat', sector: 'Meme' },
-                        { symbol: 'SUI', name: 'Sui', sector: 'L1' },
-                        { symbol: 'OP', name: 'Optimism', sector: 'L2' },
-                        { symbol: 'ARB', name: 'Arbitrum', sector: 'L2' },
-                        { symbol: 'NEAR', name: 'Near Protocol', sector: 'L1' },
-                        { symbol: 'APT', name: 'Aptos', sector: 'L1' }
-                    ];
+                        coinDatabase = Object.keys(tickers).map(symbol => {
+                            const coin = tickers[symbol];
+                            return {
+                                symbol: symbol.toUpperCase(),
+                                name: getBithumbCoinName(symbol),
+                                id: symbol.toLowerCase(),
+                                sector: getSector(symbol.toLowerCase(), symbol.toUpperCase()),
+                                price: parseFloat(coin.closing_price) || 0,
+                                change: parseFloat(coin.fluctate_rate_24H) || 0,
+                                volume: parseFloat(coin.acc_trade_value_24H) || 0,
+                                exchange: 'Bithumb'
+                            };
+                        }).sort((a, b) => b.volume - a.volume); // 거래량순 정렬
+
+                        console.log(`✅ 빗썸 ${coinDatabase.length}개 코인 로드 완료`);
+                        return;
+                    }
+                    throw new Error('Bithumb API response not OK');
+
+                } catch (bithumbErr) {
+                    console.warn('빗썸 API 오류, CoinGecko 시도:', bithumbErr);
+
+                    // 폴백: CoinGecko API
+                    try {
+                        const res = await fetch('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=250&page=1&sparkline=false');
+                        const data = await res.json();
+
+                        coinDatabase = data.map(coin => ({
+                            symbol: coin.symbol.toUpperCase(),
+                            name: coin.name,
+                            id: coin.id,
+                            sector: getSector(coin.id, coin.symbol.toUpperCase()),
+                            price: coin.current_price,
+                            change: coin.price_change_percentage_24h || 0,
+                            exchange: 'CoinGecko'
+                        }));
+
+                        console.log(`✅ CoinGecko ${coinDatabase.length}개 코인 로드 완료 (폴백)`);
+                    } catch (cgErr) {
+                        console.warn('CoinGecko도 실패, 기본 목록 사용');
+                        // 최종 폴백: 빗썸 주요 코인 목록
+                        coinDatabase = [
+                            { symbol: 'BTC', name: '비트코인', sector: 'L1', exchange: 'Bithumb' },
+                            { symbol: 'ETH', name: '이더리움', sector: 'L1', exchange: 'Bithumb' },
+                            { symbol: 'XRP', name: '리플', sector: 'L1', exchange: 'Bithumb' },
+                            { symbol: 'SOL', name: '솔라나', sector: 'L1', exchange: 'Bithumb' },
+                            { symbol: 'DOGE', name: '도지코인', sector: 'Meme', exchange: 'Bithumb' },
+                            { symbol: 'ADA', name: '에이다', sector: 'L1', exchange: 'Bithumb' },
+                            { symbol: 'AVAX', name: '아발란체', sector: 'L1', exchange: 'Bithumb' },
+                            { symbol: 'DOT', name: '폴카닷', sector: 'L1', exchange: 'Bithumb' },
+                            { symbol: 'LINK', name: '체인링크', sector: 'DeFi', exchange: 'Bithumb' },
+                            { symbol: 'MATIC', name: '폴리곤', sector: 'L2', exchange: 'Bithumb' },
+                            { symbol: 'SHIB', name: '시바이누', sector: 'Meme', exchange: 'Bithumb' },
+                            { symbol: 'TRX', name: '트론', sector: 'L1', exchange: 'Bithumb' },
+                            { symbol: 'EOS', name: '이오스', sector: 'L1', exchange: 'Bithumb' },
+                            { symbol: 'XLM', name: '스텔라루멘', sector: 'L1', exchange: 'Bithumb' },
+                            { symbol: 'ETC', name: '이더리움클래식', sector: 'L1', exchange: 'Bithumb' },
+                            { symbol: 'BCH', name: '비트코인캐시', sector: 'L1', exchange: 'Bithumb' },
+                            { symbol: 'SAND', name: '샌드박스', sector: 'GameFi', exchange: 'Bithumb' },
+                            { symbol: 'MANA', name: '디센트럴랜드', sector: 'GameFi', exchange: 'Bithumb' },
+                            { symbol: 'AXS', name: '엑시인피니티', sector: 'GameFi', exchange: 'Bithumb' },
+                            { symbol: 'HBAR', name: '헤데라', sector: 'L1', exchange: 'Bithumb' }
+                        ];
+                    }
                 }
+            }
+
+            // 빗썸 코인 한글명 매핑
+            function getBithumbCoinName(symbol) {
+                const names = {
+                    'BTC': '비트코인', 'ETH': '이더리움', 'XRP': '리플', 'SOL': '솔라나',
+                    'DOGE': '도지코인', 'ADA': '에이다', 'AVAX': '아발란체', 'DOT': '폴카닷',
+                    'LINK': '체인링크', 'MATIC': '폴리곤', 'SHIB': '시바이누', 'TRX': '트론',
+                    'EOS': '이오스', 'XLM': '스텔라루멘', 'ETC': '이더리움클래식', 'BCH': '비트코인캐시',
+                    'SAND': '샌드박스', 'MANA': '디센트럴랜드', 'AXS': '엑시인피니티', 'HBAR': '헤데라',
+                    'APT': '앱토스', 'ARB': '아비트럼', 'OP': '옵티미즘', 'SUI': '수이',
+                    'NEAR': '니어프로토콜', 'ATOM': '코스모스', 'FIL': '파일코인', 'LTC': '라이트코인',
+                    'UNI': '유니스왑', 'AAVE': '에이브', 'MKR': '메이커', 'SNX': '신세틱스',
+                    'COMP': '컴파운드', 'CRV': '커브', 'SUSHI': '스시스왑', 'YFI': '연파이낸스',
+                    'GRT': '더그래프', 'ENJ': '엔진코인', 'CHZ': '칠리즈', 'KLAY': '클레이튼',
+                    'WEMIX': '위믹스', 'STMX': '스톰엑스', 'ANKR': '앵커', 'QTUM': '퀀텀',
+                    'ZIL': '질리카', 'ICX': '아이콘', 'ONT': '온톨로지', 'ZRX': '제로엑스',
+                    'BAT': '베이직어텐션토큰', 'THETA': '세타토큰', 'VET': '비체인', 'NEO': '네오',
+                    'WAVES': '웨이브', 'IOTA': '아이오타', 'BTG': '비트코인골드', 'LOOM': '룸네트워크'
+                };
+                return names[symbol.toUpperCase()] || symbol;
             }
 
             // 섹터 분류 함수
