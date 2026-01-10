@@ -998,10 +998,10 @@
             }
         }
 
-        // 전문가 분석 로드 (API 연동)
+        // 전문가 분석 로드 (과거→현재→미래 + NICE 레이어별 분석)
         async function loadExpertAnalysis() {
             const container = document.getElementById('expert-views');
-            container.innerHTML = '<div class="text-center text-gray-400 py-4">전문가 데이터 분석 중...</div>';
+            container.innerHTML = '<div class="text-center text-gray-400 py-4">🔄 NICE 레이어 분석 중...</div>';
 
             try {
                 const res = await fetch('/api/nice/experts');
@@ -1012,68 +1012,114 @@
                     return;
                 }
 
-                // 전문가 관점 렌더링
-                const experts = data.experts || [];
+                let html = '';
 
-                if (experts.length > 0) {
-                    container.innerHTML = experts.map(exp => {
-                        // 신호 색상 결정
-                        const signal = exp.signal || '';
-                        let signalClass = 'text-gray-400';
-                        if (signal.includes('강한 매수') || signal.includes('매수')) {
-                            signalClass = 'text-emerald-400';
-                        } else if (signal.includes('매도')) {
-                            signalClass = 'text-red-400';
-                        } else if (signal.includes('중립') || signal.includes('관망')) {
-                            signalClass = 'text-yellow-400';
-                        }
-
-                        return `
-                            <div class="glass-card p-3 mb-2">
-                                <div class="flex justify-between items-start mb-2">
-                                    <span class="font-bold text-white">${exp.expert || exp.name || '전문가'}</span>
-                                    <span class="${signalClass} font-bold text-sm">${exp.signal || '분석 중'}</span>
+                // ========== 1. 타임라인 분석 (과거→현재→미래) ==========
+                if (data.timeline) {
+                    const tl = data.timeline;
+                    html += `
+                        <div class="glass-card p-4 mb-4">
+                            <h4 class="font-bold text-white mb-3">📊 시장 타임라인 분석</h4>
+                            <div class="space-y-3">
+                                <div class="flex items-start gap-3">
+                                    <span class="text-gray-500 font-bold min-w-[60px]">📜 과거</span>
+                                    <span class="text-gray-300 text-sm">${tl.past}</span>
                                 </div>
-                                <div class="text-xs text-gray-400 mb-2">${exp.reasoning || exp.action || ''}</div>
-                                ${exp.key_factors && exp.key_factors.length > 0 ? `
-                                    <div class="text-xs text-gray-500">
-                                        ${exp.key_factors.slice(0, 2).map(f => `• ${f}`).join('<br>')}
-                                    </div>
-                                ` : ''}
-                            </div>
-                        `;
-                    }).join('');
-
-                    // 컨센서스 추가
-                    if (data.consensus) {
-                        const consensusClass = data.consensus.signal?.includes('매수') ? 'text-emerald-400' : 'text-yellow-400';
-                        container.innerHTML += `
-                            <div class="glass-card p-3 mt-3 border border-emerald-500/30">
-                                <div class="flex justify-between items-center">
-                                    <span class="font-bold text-emerald-400">📊 컨센서스</span>
-                                    <span class="${consensusClass} font-bold">${data.consensus.signal || '분석 중'}</span>
+                                <div class="flex items-start gap-3">
+                                    <span class="text-emerald-400 font-bold min-w-[60px]">📍 현재</span>
+                                    <span class="text-emerald-300 text-sm">${tl.present}</span>
                                 </div>
-                                <div class="text-xs text-gray-400 mt-1">신뢰도: ${data.consensus.confidence?.toFixed(0) || 0}%</div>
+                                <div class="flex items-start gap-3">
+                                    <span class="text-cyan-400 font-bold min-w-[60px]">🔮 미래</span>
+                                    <span class="text-cyan-300 text-sm">${tl.future}</span>
+                                </div>
                             </div>
-                        `;
-                    }
-                } else {
-                    // 기본 표시
-                    container.innerHTML = `
-                        <div class="flow-item">
-                            <span class="text-gray-400">BlackRock</span>
-                            <span class="text-emerald-400 font-bold">비중 확대 (Overweight)</span>
-                        </div>
-                        <div class="flow-item">
-                            <span class="text-gray-400">JP Morgan</span>
-                            <span class="text-emerald-400 font-bold">ETF 유입 지속</span>
-                        </div>
-                        <div class="flow-item">
-                            <span class="text-gray-400">Goldman Sachs</span>
-                            <span class="text-yellow-400 font-bold">중립 (Neutral)</span>
                         </div>
                     `;
                 }
+
+                // ========== 2. NICE 레이어별 분석 ==========
+                if (data.layer_analysis) {
+                    const layers = data.layer_analysis;
+                    html += '<div class="glass-card p-4 mb-4"><h4 class="font-bold text-white mb-3">📈 NICE 5-Layer 상세 분석</h4><div class="space-y-3">';
+                    
+                    const layerKeys = ['layer1_technical', 'layer2_onchain', 'layer3_sentiment', 'layer4_macro', 'layer5_institutional'];
+                    const layerColors = ['#8b5cf6', '#10b981', '#f59e0b', '#3b82f6', '#ec4899'];
+                    
+                    layerKeys.forEach((key, idx) => {
+                        const layer = layers[key];
+                        if (layer) {
+                            const pct = (layer.score / layer.max * 100).toFixed(0);
+                            const statusColor = layer.status.includes('강세') || layer.status.includes('축적') || layer.status.includes('우호') || layer.status.includes('매집') || layer.status.includes('탐욕')
+                                ? '#10b981' : (layer.status.includes('약세') || layer.status.includes('분배') || layer.status.includes('비우호') || layer.status.includes('매도') || layer.status.includes('공포') ? '#ef4444' : '#eab308');
+                            
+                            html += `
+                                <div class="bg-gray-800/50 rounded-lg p-3 border-l-4" style="border-color: ${layerColors[idx]}">
+                                    <div class="flex justify-between items-center mb-2">
+                                        <span class="font-bold text-white text-sm">${layer.name}</span>
+                                        <div class="flex items-center gap-2">
+                                            <span class="text-xs px-2 py-0.5 rounded" style="background: ${statusColor}20; color: ${statusColor}">${layer.status}</span>
+                                            <span class="text-white font-bold">${layer.score}/${layer.max}</span>
+                                        </div>
+                                    </div>
+                                    <div class="w-full bg-gray-700 rounded-full h-1.5 mb-2">
+                                        <div class="h-1.5 rounded-full" style="width: ${pct}%; background: ${layerColors[idx]}"></div>
+                                    </div>
+                                    <div class="grid grid-cols-3 gap-2 text-xs">
+                                        <div><span class="text-gray-500">과거</span><p class="text-gray-400 mt-0.5">${layer.past}</p></div>
+                                        <div><span class="text-emerald-500">현재</span><p class="text-gray-300 mt-0.5">${layer.present}</p></div>
+                                        <div><span class="text-cyan-500">미래</span><p class="text-gray-400 mt-0.5">${layer.future}</p></div>
+                                    </div>
+                                </div>
+                            `;
+                        }
+                    });
+                    
+                    html += '</div></div>';
+                }
+
+                // ========== 3. 전문가 의견 ==========
+                const experts = data.experts || [];
+                if (experts.length > 0) {
+                    html += '<div class="glass-card p-4"><h4 class="font-bold text-white mb-3">👔 전문가 의견</h4><div class="grid grid-cols-2 gap-2">';
+                    
+                    experts.forEach(exp => {
+                        const signal = exp.signal || '';
+                        let signalClass = 'text-gray-400';
+                        if (signal.includes('강한 매수') || signal.includes('매수')) signalClass = 'text-emerald-400';
+                        else if (signal.includes('매도')) signalClass = 'text-red-400';
+                        else if (signal.includes('중립') || signal.includes('관망')) signalClass = 'text-yellow-400';
+
+                        html += `
+                            <div class="bg-gray-800/30 rounded p-2">
+                                <div class="flex justify-between items-center">
+                                    <span class="font-bold text-white text-xs">${exp.expert || exp.name}</span>
+                                    <span class="${signalClass} font-bold text-xs">${exp.signal}</span>
+                                </div>
+                                <div class="text-[10px] text-gray-500 mt-1">${exp.action || ''}</div>
+                            </div>
+                        `;
+                    });
+                    
+                    html += '</div>';
+
+                    // 컨센서스
+                    if (data.consensus) {
+                        const consensusClass = data.consensus.signal?.includes('매수') ? 'text-emerald-400' : 'text-yellow-400';
+                        html += `
+                            <div class="mt-3 p-2 border border-emerald-500/30 rounded-lg flex justify-between items-center">
+                                <span class="font-bold text-emerald-400">📊 컨센서스</span>
+                                <div>
+                                    <span class="${consensusClass} font-bold">${data.consensus.signal}</span>
+                                    <span class="text-gray-500 text-xs ml-2">(신뢰도 ${data.consensus.confidence?.toFixed(0) || 0}%)</span>
+                                </div>
+                            </div>
+                        `;
+                    }
+                    html += '</div>';
+                }
+
+                container.innerHTML = html || '<div class="text-gray-400 text-center py-4">분석 데이터 없음</div>';
             } catch (e) {
                 console.error('Expert analysis error:', e);
                 container.innerHTML = `

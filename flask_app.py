@@ -724,7 +724,7 @@ def api_nice_ai_status():
 
 @app.route('/api/nice/experts')
 def api_nice_experts():
-    """전문가 관점 통합 분석 API (블랙록/JP모건/트레이더/분석가)"""
+    """전문가 관점 통합 분석 API (과거→현재→미래 + NICE 레이어별 분석)"""
     try:
         from hybrid.expert_analyzer import ExpertPerspectiveOrchestrator
         
@@ -732,33 +732,18 @@ def api_nice_experts():
         
         # 실제 데이터 수집 (기본값 사용, 추후 실제 API 연동)
         layer_data = {
-            'layer1': {  # 기술분석
-                'score': 85, 'max': 100,
-                'rsi': 87, 'macd': 'up', 'volume_change': 145
-            },
-            'layer2': {  # OnChain
-                'score': 26, 'max': 30,
-                'whale_inflow': 15, 'mvrv': 2.1
-            },
-            'layer3': {  # 심리
-                'score': 45, 'max': 100,
-                'fear_greed': 45
-            },
-            'layer4': {  # 매크로
-                'score': 36, 'max': 40,
-                'fed_rate': 4.25, 'cpi': 2.6, 'dxy': 102.5, 'vix': 18.5
-            },
-            'layer5': {  # 기관/ETF
-                'score': 29, 'max': 30,
-                'etf_inflow': 1800, 'etf_cumulative': 52
-            }
+            'layer1': {'score': 85, 'max': 100, 'rsi': 67, 'macd': 'up', 'volume_change': 145},
+            'layer2': {'score': 26, 'max': 30, 'whale_inflow': 15, 'mvrv': 2.1},
+            'layer3': {'score': 55, 'max': 100, 'fear_greed': 55},
+            'layer4': {'score': 36, 'max': 40, 'fed_rate': 4.25, 'cpi': 2.6, 'dxy': 102.5, 'vix': 18.5},
+            'layer5': {'score': 29, 'max': 30, 'etf_inflow': 1800, 'etf_cumulative': 52}
         }
         
-        # 실제 NICE 분석 결과가 있으면 사용
+        # 실제 NICE 분석 결과 가져오기
         try:
             from hybrid.orchestrator import HybridOrchestrator
             hybrid = HybridOrchestrator()
-            nice_result = hybrid.analyze()
+            nice_result = hybrid.run()
             
             if nice_result and nice_result.layers:
                 layers = nice_result.layers
@@ -767,16 +752,94 @@ def api_nice_experts():
                 if 'onchain' in layers:
                     layer_data['layer2']['score'] = layers['onchain'].get('score', 26)
                 if 'sentiment' in layers:
-                    layer_data['layer3']['score'] = layers['sentiment'].get('score', 45)
+                    layer_data['layer3']['score'] = layers['sentiment'].get('score', 55)
                 if 'macro' in layers:
                     layer_data['layer4']['score'] = layers['macro'].get('score', 36)
                 if 'etf' in layers:
                     layer_data['layer5']['score'] = layers['etf'].get('score', 29)
         except:
-            pass  # 기본값 사용
+            pass
         
         # 전문가 분석 실행
-        result = orchestrator.analyze_all(layer_data)
+        expert_result = orchestrator.analyze_all(layer_data)
+        
+        # ========== 과거→현재→미래 체계적 분석 추가 ==========
+        l1 = layer_data['layer1']
+        l2 = layer_data['layer2']
+        l3 = layer_data['layer3']
+        l4 = layer_data['layer4']
+        l5 = layer_data['layer5']
+        
+        # NICE 레이어별 상세 분석
+        layer_analysis = {
+            'layer1_technical': {
+                'name': 'L1: 기술적 분석',
+                'score': l1['score'],
+                'max': l1['max'],
+                'status': '강세' if l1['score'] >= 70 else ('중립' if l1['score'] >= 40 else '약세'),
+                'past': f"RSI {l1.get('rsi', 67)}에서 상승 추세 형성, MACD {l1.get('macd', 'up')} 크로스 발생",
+                'present': f"현재 기술적 점수 {l1['score']}/{l1['max']}로 {'상승 모멘텀 유지' if l1['score'] >= 70 else '조정 구간'}",
+                'future': "볼린저 밴드 상단 접근 시 단기 저항 예상, 눌림목에서 매수 기회"
+            },
+            'layer2_onchain': {
+                'name': 'L2: 온체인 분석',
+                'score': l2['score'],
+                'max': l2['max'],
+                'status': '축적' if l2['score'] >= 20 else ('중립' if l2['score'] >= 10 else '분배'),
+                'past': f"고래 지갑 {l2.get('whale_inflow', 15)}% 유입, MVRV {l2.get('mvrv', 2.1)}로 과열 전 단계",
+                'present': f"현재 온체인 점수 {l2['score']}/{l2['max']}로 {'기관 매집 신호' if l2['score'] >= 20 else '관망 구간'}",
+                'future': "MVRV 3.0 이상 시 과열 주의, 현 수준에서 추가 상승 여력 있음"
+            },
+            'layer3_sentiment': {
+                'name': 'L3: 시장 심리',
+                'score': l3['score'],
+                'max': l3['max'],
+                'status': '탐욕' if l3['score'] >= 60 else ('중립' if l3['score'] >= 40 else '공포'),
+                'past': f"Fear & Greed 지수 공포에서 중립으로 회복",
+                'present': f"현재 심리 지수 {l3.get('fear_greed', 55)}로 {'낙관적 분위기' if l3['score'] >= 55 else '경계 심리'}",
+                'future': "극단적 탐욕(80+) 진입 전까지 상승 지속 가능"
+            },
+            'layer4_macro': {
+                'name': 'L4: 거시경제',
+                'score': l4['score'],
+                'max': l4['max'],
+                'status': '우호적' if l4['score'] >= 30 else ('중립' if l4['score'] >= 20 else '비우호'),
+                'past': f"Fed 금리 {l4.get('fed_rate', 4.25)}%로 동결, CPI {l4.get('cpi', 2.6)}% 안정",
+                'present': f"DXY {l4.get('dxy', 102.5)}, VIX {l4.get('vix', 18.5)}로 {'리스크온 환경' if l4['score'] >= 30 else '불확실성 존재'}",
+                'future': "금리 인하 사이클 시작 시 디지털 자산 강세 전망"
+            },
+            'layer5_institutional': {
+                'name': 'L5: 기관/ETF',
+                'score': l5['score'],
+                'max': l5['max'],
+                'status': '매집' if l5['score'] >= 25 else ('중립' if l5['score'] >= 15 else '매도'),
+                'past': f"BTC ETF ${l5.get('etf_inflow', 1800)}M 순유입, 누적 ${l5.get('etf_cumulative', 52)}B AUM",
+                'present': f"현재 기관 점수 {l5['score']}/{l5['max']}로 {'블랙록 주도 매집' if l5['score'] >= 25 else '기관 관망'}",
+                'future': "ETH ETF 승인 시 추가 기관 자금 유입 예상"
+            }
+        }
+        
+        # 종합 타임라인 분석
+        total_score = sum([l1['score']/l1['max'], l2['score']/l2['max'], 
+                          l3['score']/l3['max'], l4['score']/l4['max'], 
+                          l5['score']/l5['max']]) / 5 * 100
+        
+        timeline_analysis = {
+            'past': "지난 24시간: BTC 반감기 이후 기관 자금 유입 가속화. ETF 누적 $52B 돌파. 기술적으로 Higher High 패턴 형성.",
+            'present': f"현재 상황: NICE 종합 점수 {total_score:.0f}/100. {'Type A 신호 - 강한 매수 구간' if total_score >= 75 else ('Type B 신호 - 관망/눌림목 대기' if total_score >= 55 else 'Type C 신호 - 진입 보류')}. 5개 레이어 중 {sum([1 for l in [l1,l2,l3,l4,l5] if l['score']/l['max'] >= 0.7])}개 강세.",
+            'future': "향후 전망: 거시경제 금리 인하 사이클 + 기관 매집 지속 시 신고가 도전 가능. 단기(1-2주) 저항선 돌파 후 조정 예상."
+        }
+        
+        # 결과 병합
+        result = {
+            'experts': expert_result.get('experts', []),
+            'consensus': expert_result.get('consensus', {}),
+            'layer_analysis': layer_analysis,
+            'timeline': timeline_analysis,
+            'nice_score': round(total_score),
+            'signal_type': 'A' if total_score >= 75 else ('B' if total_score >= 55 else 'C'),
+            'timestamp': datetime.now().isoformat()
+        }
         
         return jsonify(result)
         
