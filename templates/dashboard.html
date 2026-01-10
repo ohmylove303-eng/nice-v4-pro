@@ -255,6 +255,21 @@
                         <span id="main-type" class="type-badge type-a">Type A</span>
                         <span class="font-bold text-emerald-400" id="main-score">86점</span>
                     </div>
+
+                    <!-- 코인 검색 -->
+                    <div class="relative flex-1 max-w-xs mx-4">
+                        <div class="relative">
+                            <input type="text" id="coin-search-input" placeholder="🔍 코인 검색 (BTC, ETH, SOL...)"
+                                class="w-full bg-gray-800/80 border border-gray-600 rounded-lg px-3 py-1.5 text-sm text-white placeholder-gray-400 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500"
+                                autocomplete="off">
+                            <button id="search-clear-btn"
+                                class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white hidden">✕</button>
+                        </div>
+                        <div id="search-results"
+                            class="absolute top-full left-0 right-0 bg-gray-900 border border-gray-700 rounded-lg mt-1 max-h-64 overflow-y-auto hidden z-50 shadow-xl">
+                        </div>
+                    </div>
+
                     <div class="flex items-center gap-3 text-xs">
                         <span class="pulse text-emerald-400">● LIVE</span>
                         <span class="text-gray-400" id="last-update">18:40 갱신</span>
@@ -1404,7 +1419,180 @@
         document.addEventListener('DOMContentLoaded', () => {
             // ... (기존 초기화 코드)
 
-            // 탭 버튼 이벤트
+            // ========== 코인 검색 기능 ==========
+            const coinDatabase = [
+                // 메이저 코인
+                { symbol: 'BTC', name: 'Bitcoin', sector: 'L1' },
+                { symbol: 'ETH', name: 'Ethereum', sector: 'L1' },
+                { symbol: 'SOL', name: 'Solana', sector: 'L1' },
+                { symbol: 'XRP', name: 'Ripple', sector: 'L1' },
+                { symbol: 'BNB', name: 'BNB', sector: 'Exchange' },
+                { symbol: 'ADA', name: 'Cardano', sector: 'L1' },
+                { symbol: 'AVAX', name: 'Avalanche', sector: 'L1' },
+                { symbol: 'DOT', name: 'Polkadot', sector: 'L1' },
+                { symbol: 'LINK', name: 'Chainlink', sector: 'DeFi' },
+                { symbol: 'MATIC', name: 'Polygon', sector: 'L2' },
+                // 밈 코인
+                { symbol: 'DOGE', name: 'Dogecoin', sector: 'Meme' },
+                { symbol: 'SHIB', name: 'Shiba Inu', sector: 'Meme' },
+                { symbol: 'PEPE', name: 'Pepe', sector: 'Meme' },
+                { symbol: 'BONK', name: 'Bonk', sector: 'Meme' },
+                { symbol: 'WIF', name: 'Dogwifhat', sector: 'Meme' },
+                { symbol: 'FLOKI', name: 'Floki', sector: 'Meme' },
+                // 기타
+                { symbol: 'SUI', name: 'Sui', sector: 'L1' },
+                { symbol: 'OP', name: 'Optimism', sector: 'L2' },
+                { symbol: 'ARB', name: 'Arbitrum', sector: 'L2' },
+                { symbol: 'NEAR', name: 'Near Protocol', sector: 'L1' },
+                { symbol: 'APT', name: 'Aptos', sector: 'L1' },
+                { symbol: 'UNI', name: 'Uniswap', sector: 'DeFi' },
+                { symbol: 'ATOM', name: 'Cosmos', sector: 'L1' },
+                { symbol: 'FIL', name: 'Filecoin', sector: 'Storage' },
+                { symbol: 'TRX', name: 'Tron', sector: 'L1' },
+                { symbol: 'TON', name: 'Toncoin', sector: 'L1' },
+                { symbol: 'LTC', name: 'Litecoin', sector: 'L1' },
+                { symbol: 'BCH', name: 'Bitcoin Cash', sector: 'L1' },
+                { symbol: 'FTM', name: 'Fantom', sector: 'L1' },
+                { symbol: 'INJ', name: 'Injective', sector: 'DeFi' },
+                { symbol: 'AAVE', name: 'Aave', sector: 'DeFi' },
+                { symbol: 'MKR', name: 'Maker', sector: 'DeFi' },
+                { symbol: 'CRV', name: 'Curve', sector: 'DeFi' },
+                { symbol: 'SAND', name: 'The Sandbox', sector: 'GameFi' },
+                { symbol: 'MANA', name: 'Decentraland', sector: 'GameFi' },
+                { symbol: 'AXS', name: 'Axie Infinity', sector: 'GameFi' },
+                { symbol: 'GALA', name: 'Gala', sector: 'GameFi' },
+                { symbol: 'IMX', name: 'Immutable', sector: 'L2' },
+                { symbol: 'RENDER', name: 'Render', sector: 'AI' },
+                { symbol: 'FET', name: 'Fetch.ai', sector: 'AI' },
+                { symbol: 'AGIX', name: 'SingularityNET', sector: 'AI' }
+            ];
+
+            const searchInput = document.getElementById('coin-search-input');
+            const searchResults = document.getElementById('search-results');
+            const clearBtn = document.getElementById('search-clear-btn');
+            let selectedIndex = -1;
+
+            // 검색 입력 이벤트
+            searchInput.addEventListener('input', function () {
+                const query = this.value.trim().toUpperCase();
+
+                if (query.length === 0) {
+                    searchResults.classList.add('hidden');
+                    clearBtn.classList.add('hidden');
+                    return;
+                }
+
+                clearBtn.classList.remove('hidden');
+
+                // 검색 필터링
+                const filtered = coinDatabase.filter(coin =>
+                    coin.symbol.includes(query) ||
+                    coin.name.toUpperCase().includes(query)
+                ).slice(0, 10);
+
+                if (filtered.length === 0) {
+                    searchResults.innerHTML = '<div class="p-3 text-gray-400 text-sm">검색 결과가 없습니다</div>';
+                } else {
+                    searchResults.innerHTML = filtered.map((coin, idx) => `
+                        <div class="search-result-item px-3 py-2 hover:bg-gray-800 cursor-pointer flex items-center gap-2 ${idx === selectedIndex ? 'bg-gray-800' : ''}" 
+                             data-symbol="${coin.symbol}" data-index="${idx}">
+                            <span class="font-bold text-white">${coin.symbol}</span>
+                            <span class="text-gray-400 text-sm">${coin.name}</span>
+                            <span class="ml-auto text-xs px-2 py-0.5 rounded bg-gray-700 text-gray-300">${coin.sector}</span>
+                        </div>
+                    `).join('');
+                }
+
+                searchResults.classList.remove('hidden');
+            });
+
+            // 검색 결과 클릭
+            searchResults.addEventListener('click', function (e) {
+                const item = e.target.closest('.search-result-item');
+                if (item) {
+                    const symbol = item.dataset.symbol;
+                    selectCoinFromSearch(symbol);
+                }
+            });
+
+            // 키보드 네비게이션
+            searchInput.addEventListener('keydown', function (e) {
+                const items = searchResults.querySelectorAll('.search-result-item');
+
+                if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    selectedIndex = Math.min(selectedIndex + 1, items.length - 1);
+                    updateSearchSelection(items);
+                } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    selectedIndex = Math.max(selectedIndex - 1, 0);
+                    updateSearchSelection(items);
+                } else if (e.key === 'Enter') {
+                    e.preventDefault();
+                    if (selectedIndex >= 0 && items[selectedIndex]) {
+                        const symbol = items[selectedIndex].dataset.symbol;
+                        selectCoinFromSearch(symbol);
+                    } else if (this.value.trim()) {
+                        // 직접 입력한 심볼로 검색
+                        selectCoinFromSearch(this.value.trim().toUpperCase());
+                    }
+                } else if (e.key === 'Escape') {
+                    searchResults.classList.add('hidden');
+                    selectedIndex = -1;
+                }
+            });
+
+            // 선택 하이라이트 업데이트
+            function updateSearchSelection(items) {
+                items.forEach((item, idx) => {
+                    if (idx === selectedIndex) {
+                        item.classList.add('bg-gray-800');
+                    } else {
+                        item.classList.remove('bg-gray-800');
+                    }
+                });
+            }
+
+            // 검색에서 코인 선택
+            function selectCoinFromSearch(symbol) {
+                searchInput.value = symbol;
+                searchResults.classList.add('hidden');
+                selectedIndex = -1;
+
+                // selectCoin 함수 호출 (TradingView, 파동 분석, AI 분석 연동)
+                selectCoin(symbol);
+
+                // 성공 피드백
+                searchInput.style.borderColor = '#22c55e';
+                setTimeout(() => {
+                    searchInput.style.borderColor = '';
+                }, 1000);
+            }
+
+            // 클리어 버튼
+            clearBtn.addEventListener('click', function () {
+                searchInput.value = '';
+                searchResults.classList.add('hidden');
+                clearBtn.classList.add('hidden');
+                selectedIndex = -1;
+            });
+
+            // 외부 클릭 시 드롭다운 닫기
+            document.addEventListener('click', function (e) {
+                if (!searchInput.contains(e.target) && !searchResults.contains(e.target)) {
+                    searchResults.classList.add('hidden');
+                    selectedIndex = -1;
+                }
+            });
+
+            // 포커스 시 이전 검색 결과 표시
+            searchInput.addEventListener('focus', function () {
+                if (this.value.trim().length > 0) {
+                    searchResults.classList.remove('hidden');
+                }
+            });
+
+            // ========== 기존 탭 버튼 이벤트 ==========
             document.querySelectorAll('.tab-btn').forEach(btn => {
                 btn.addEventListener('click', function () {
                     const tabName = this.dataset.tab;
