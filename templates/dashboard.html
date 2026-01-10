@@ -346,6 +346,98 @@
                             <span class="indicator-btn active"
                                 style="background: rgba(236, 72, 153, 0.3); border-color: #ec4899;">PSAR (추세)</span>
                         </div>
+
+                        <!-- ========== Elliott Wave / Fibonacci / Trendline 분석 패널 (NEW) ========== -->
+                        <div class="glass-card p-3 mt-3" id="wave-analysis-panel">
+                            <h4 class="font-bold text-sm mb-3 flex items-center gap-2">
+                                <span>📐</span> 기술적 파동 분석
+                                <span class="text-xs text-gray-400" id="wave-coin-name">(BTC)</span>
+                            </h4>
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
+                                <!-- Elliott Wave 분석 -->
+                                <div class="bg-gray-800/50 rounded-lg p-3 border-l-4 border-purple-500">
+                                    <div class="text-purple-400 text-xs font-bold mb-2">🌊 Elliott Wave</div>
+                                    <div class="text-white font-bold text-lg mb-1" id="elliott-position">Wave 3 상승</div>
+                                    <div class="text-xs text-gray-400" id="elliott-detail">
+                                        5파 상승 중 3파 진행<br>
+                                        목표: 4파 조정 후 5파 신고가
+                                    </div>
+                                    <div class="mt-2 flex gap-1">
+                                        <span
+                                            class="px-2 py-0.5 bg-purple-500/20 text-purple-300 rounded text-xs">1</span>
+                                        <span
+                                            class="px-2 py-0.5 bg-purple-500/20 text-purple-300 rounded text-xs">2</span>
+                                        <span class="px-2 py-0.5 bg-purple-500 text-white rounded text-xs font-bold"
+                                            id="current-wave">3</span>
+                                        <span class="px-2 py-0.5 bg-gray-700 text-gray-400 rounded text-xs">4</span>
+                                        <span class="px-2 py-0.5 bg-gray-700 text-gray-400 rounded text-xs">5</span>
+                                    </div>
+                                </div>
+
+                                <!-- Fibonacci 레벨 -->
+                                <div class="bg-gray-800/50 rounded-lg p-3 border-l-4 border-yellow-500">
+                                    <div class="text-yellow-400 text-xs font-bold mb-2">📊 Fibonacci Retracement</div>
+                                    <div class="text-white font-bold mb-1" id="fib-position">61.8% 지지 테스트</div>
+                                    <div class="space-y-1 text-xs">
+                                        <div class="flex justify-between">
+                                            <span class="text-gray-400">0.0% (저점)</span>
+                                            <span class="text-white" id="fib-0">$85,000</span>
+                                        </div>
+                                        <div class="flex justify-between">
+                                            <span class="text-gray-400">23.6%</span>
+                                            <span class="text-gray-300" id="fib-236">$88,500</span>
+                                        </div>
+                                        <div class="flex justify-between">
+                                            <span class="text-gray-400">38.2%</span>
+                                            <span class="text-gray-300" id="fib-382">$90,700</span>
+                                        </div>
+                                        <div class="flex justify-between bg-yellow-500/20 px-1 rounded">
+                                            <span class="text-yellow-400 font-bold">50.0% ◀ 현재</span>
+                                            <span class="text-yellow-300 font-bold" id="fib-50">$92,500</span>
+                                        </div>
+                                        <div class="flex justify-between">
+                                            <span class="text-gray-400">61.8%</span>
+                                            <span class="text-gray-300" id="fib-618">$94,300</span>
+                                        </div>
+                                        <div class="flex justify-between">
+                                            <span class="text-gray-400">100% (고점)</span>
+                                            <span class="text-white" id="fib-100">$100,000</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Trendline 분석 -->
+                                <div class="bg-gray-800/50 rounded-lg p-3 border-l-4 border-cyan-500">
+                                    <div class="text-cyan-400 text-xs font-bold mb-2">📈 추세선 분석</div>
+                                    <div class="text-white font-bold mb-1" id="trend-status">상승 추세 유지</div>
+                                    <div class="space-y-2 text-xs">
+                                        <div class="flex justify-between items-center">
+                                            <span class="text-emerald-400">▲ 주요 저항</span>
+                                            <span class="text-emerald-300 font-bold"
+                                                id="trend-resistance">$98,500</span>
+                                        </div>
+                                        <div class="flex justify-between items-center bg-cyan-500/20 px-1 rounded">
+                                            <span class="text-cyan-400 font-bold">◆ 현재가</span>
+                                            <span class="text-cyan-300 font-bold" id="trend-current">$92,500</span>
+                                        </div>
+                                        <div class="flex justify-between items-center">
+                                            <span class="text-red-400">▼ 주요 지지</span>
+                                            <span class="text-red-300 font-bold" id="trend-support">$88,000</span>
+                                        </div>
+                                        <div class="mt-2 pt-2 border-t border-gray-700">
+                                            <div class="text-gray-400">추세 강도</div>
+                                            <div class="flex items-center gap-2 mt-1">
+                                                <div class="flex-1 bg-gray-700 rounded-full h-2">
+                                                    <div class="bg-gradient-to-r from-cyan-500 to-emerald-500 h-2 rounded-full"
+                                                        id="trend-strength-bar" style="width: 72%"></div>
+                                                </div>
+                                                <span class="text-cyan-400 font-bold" id="trend-strength">72%</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
                     <!-- Market Map -->
@@ -907,7 +999,7 @@
             return `$${vol?.toFixed(0) || 0}`;
         }
 
-        // 코인 선택 및 UI 업데이트 (API 연동)
+        // 코인 선택 및 UI 업데이트 (API 연동 - 모든 코인 지원)
         async function selectCoin(symbol) {
             selectedCoin = symbol;
 
@@ -923,45 +1015,49 @@
                 }
             });
 
-            // 3. API에서 코인 상세 정보 가져오기
+            // 3. API에서 코인 분석 정보 가져오기 (모든 코인 지원)
             try {
-                const res = await fetch(`/api/crypto/coin/${symbol}`);
+                const res = await fetch(`/api/crypto/analysis/${symbol}`);
                 const data = await res.json();
 
                 if (data.error) {
-                    console.error('Coin detail error:', data.error);
+                    console.error('Coin analysis error:', data.error);
                     return;
                 }
 
                 // 상단 정보 업데이트
-                document.getElementById('chart-symbol').textContent = data.symbol;
-                document.getElementById('chart-name').textContent = data.name;
-                document.getElementById('chart-price').textContent = `$${data.price.toLocaleString()}`;
-                document.getElementById('chart-change').textContent = `${data.change_24h >= 0 ? '+' : ''}${data.change_24h.toFixed(1)}%`;
-                document.getElementById('chart-change').className = data.change_24h >= 0 ? 'text-emerald-400 text-sm' : 'text-red-400 text-sm';
-                document.getElementById('selected-coin-name').textContent = `${data.symbol} ${data.name}`;
+                document.getElementById('chart-symbol').textContent = data.symbol || symbol;
+                document.getElementById('chart-name').textContent = data.name || symbol;
+                document.getElementById('chart-price').textContent = data.price ? `$${data.price.toLocaleString()}` : '-';
+                const change = data.change_24h || 0;
+                document.getElementById('chart-change').textContent = `${change >= 0 ? '+' : ''}${change.toFixed(1)}%`;
+                document.getElementById('chart-change').className = change >= 0 ? 'text-emerald-400 text-sm' : 'text-red-400 text-sm';
+                document.getElementById('selected-coin-name').textContent = `${data.symbol || symbol} ${data.name || ''}`;
 
+                // AI 분석 패널 업데이트
+                document.getElementById('ai-circulation').textContent = data.circulation ? `${data.circulation}%` : '-';
+                document.getElementById('ai-supply').textContent = data.circulating ? `${(data.circulating / 1e9).toFixed(2)}B` : '-';
 
-                // AI 분석 패널 업데이트 (안전한 접근)
-                document.getElementById('ai-circulation').textContent = data.supply?.circulating_pct ? `${data.supply.circulating_pct.toFixed(1)}%` : '-';
-                document.getElementById('ai-supply').textContent = data.supply?.total || '-';
+                // 고래 포지션
+                document.getElementById('ai-whale').textContent = data.whale || '-';
+                document.getElementById('ai-whale-detail').textContent = data.whale_wallets ? `${data.whale_wallets} 지갑, ${data.whale_holding_pct?.toFixed(1) || 0}%` : '-';
 
-                // 고래 포지션 매핑 (accumulating, distributing, holding)
-                const whalePositionMap = {
-                    'accumulating': '축적 중',
-                    'distributing': '매도 중',
-                    'holding': '관망'
-                };
-                document.getElementById('ai-whale').textContent = whalePositionMap[data.whale?.position] || data.whale?.position || '-';
-                document.getElementById('ai-whale-detail').textContent = data.whale?.wallet_count ? `${data.whale.wallet_count} 지갑, ${data.whale.holding_pct?.toFixed(1) || 0}%` : '-';
+                // 프렉탈
+                document.getElementById('ai-fractal').textContent = data.fractal || '-';
+                document.getElementById('ai-fractal-detail').textContent = data.fractal_strength ? `강도 ${data.fractal_strength}%` : '-';
 
-                document.getElementById('ai-fractal').textContent = data.fractal?.pattern || '-';
-                document.getElementById('ai-fractal-detail').textContent = data.fractal?.strength ? `강도 ${data.fractal.strength.toFixed(0)}%` : '-';
+                // 거래 추천 (모든 코인에서 작동)
+                const price = data.price || 0;
+                const entryPrice = data.entry_price || price * 0.98;
+                const stopLoss = data.stop_loss || price * 0.95;
+                const takeProfit = data.take_profit || price * 1.05;
 
-                // 거래 추천
-                document.getElementById('ai-entry').textContent = data.trading?.entry_price ? `$${data.trading.entry_price.toLocaleString()}` : '-';
-                document.getElementById('ai-sl').textContent = data.trading?.stop_loss ? `$${data.trading.stop_loss.toLocaleString()}` : '-';
-                document.getElementById('ai-tp').textContent = data.trading?.take_profit ? `$${data.trading.take_profit.toLocaleString()}` : '-';
+                document.getElementById('ai-entry').textContent = `$${entryPrice.toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
+                document.getElementById('ai-sl').textContent = `$${stopLoss.toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
+                document.getElementById('ai-tp').textContent = `$${takeProfit.toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
+
+                // 4. 파동 분석 패널 업데이트
+                updateWaveAnalysis(symbol, price, change, data);
 
             } catch (e) {
                 console.error('selectCoin API error:', e);
@@ -970,6 +1066,89 @@
                 document.getElementById('chart-name').textContent = symbol;
                 document.getElementById('selected-coin-name').textContent = symbol;
             }
+        }
+
+        // Elliott Wave / Fibonacci / Trendline 분석 업데이트
+        function updateWaveAnalysis(symbol, price, change, data) {
+            // 파동 분석 코인 이름 업데이트
+            document.getElementById('wave-coin-name').textContent = `(${symbol})`;
+
+            // Elliott Wave 분석 (변동률 기반)
+            let wavePosition, waveDetail, currentWave;
+            if (change > 5) {
+                wavePosition = 'Wave 3 강세';
+                waveDetail = '5파 상승 중 3파 진행<br>가장 강력한 상승 파동';
+                currentWave = 3;
+            } else if (change > 2) {
+                wavePosition = 'Wave 5 진행';
+                waveDetail = '최종 상승파 진행 중<br>신고가 도전 가능';
+                currentWave = 5;
+            } else if (change > 0) {
+                wavePosition = 'Wave 1 시작';
+                waveDetail = '새로운 상승 사이클 시작<br>추세 확인 필요';
+                currentWave = 1;
+            } else if (change > -3) {
+                wavePosition = 'Wave 2 조정';
+                waveDetail = '건강한 눌림목 구간<br>매수 기회 탐색';
+                currentWave = 2;
+            } else {
+                wavePosition = 'Wave 4 조정';
+                waveDetail = '상승 전 마지막 조정<br>지지 레벨 테스트 중';
+                currentWave = 4;
+            }
+            document.getElementById('elliott-position').textContent = wavePosition;
+            document.getElementById('elliott-detail').innerHTML = waveDetail;
+
+            // 파동 버튼 하이라이트
+            const waveButtons = document.getElementById('current-wave').parentElement.children;
+            for (let i = 0; i < waveButtons.length; i++) {
+                if (i + 1 === currentWave) {
+                    waveButtons[i].className = 'px-2 py-0.5 bg-purple-500 text-white rounded text-xs font-bold';
+                } else if (i + 1 < currentWave) {
+                    waveButtons[i].className = 'px-2 py-0.5 bg-purple-500/20 text-purple-300 rounded text-xs';
+                } else {
+                    waveButtons[i].className = 'px-2 py-0.5 bg-gray-700 text-gray-400 rounded text-xs';
+                }
+            }
+
+            // Fibonacci 레벨 계산
+            const high = price * 1.1;  // 최근 고점 추정
+            const low = price * 0.9;   // 최근 저점 추정
+            const range = high - low;
+
+            document.getElementById('fib-0').textContent = `$${low.toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
+            document.getElementById('fib-236').textContent = `$${(low + range * 0.236).toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
+            document.getElementById('fib-382').textContent = `$${(low + range * 0.382).toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
+            document.getElementById('fib-50').textContent = `$${(low + range * 0.5).toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
+            document.getElementById('fib-618').textContent = `$${(low + range * 0.618).toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
+            document.getElementById('fib-100').textContent = `$${high.toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
+
+            // 현재 Fibonacci 위치
+            const fibLevel = (price - low) / range * 100;
+            let fibPosition;
+            if (fibLevel >= 78.6) fibPosition = '78.6% 상단';
+            else if (fibLevel >= 61.8) fibPosition = '61.8% 저항';
+            else if (fibLevel >= 50) fibPosition = '50% 영역';
+            else if (fibLevel >= 38.2) fibPosition = '38.2% 지지';
+            else if (fibLevel >= 23.6) fibPosition = '23.6% 하단';
+            else fibPosition = '저점 테스트';
+            document.getElementById('fib-position').textContent = fibPosition;
+
+            // 추세선 분석
+            const support = price * 0.95;
+            const resistance = price * 1.08;
+            document.getElementById('trend-current').textContent = `$${price.toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
+            document.getElementById('trend-support').textContent = `$${support.toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
+            document.getElementById('trend-resistance').textContent = `$${resistance.toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
+
+            // 추세 상태
+            const trendStatus = change > 3 ? '강한 상승 추세' : (change > 0 ? '상승 추세 유지' : (change > -3 ? '횡보/조정' : '하락 추세'));
+            document.getElementById('trend-status').textContent = trendStatus;
+
+            // 추세 강도
+            const strength = Math.min(100, Math.abs(change) * 10 + 50);
+            document.getElementById('trend-strength').textContent = `${strength.toFixed(0)}%`;
+            document.getElementById('trend-strength-bar').style.width = `${strength}%`;
         }
 
         // 헤더 실시간 데이터 로드
@@ -1042,17 +1221,17 @@
                 if (data.layer_analysis) {
                     const layers = data.layer_analysis;
                     html += '<div class="glass-card p-4 mb-4"><h4 class="font-bold text-white mb-3">📈 NICE 5-Layer 상세 분석</h4><div class="space-y-3">';
-                    
+
                     const layerKeys = ['layer1_technical', 'layer2_onchain', 'layer3_sentiment', 'layer4_macro', 'layer5_institutional'];
                     const layerColors = ['#8b5cf6', '#10b981', '#f59e0b', '#3b82f6', '#ec4899'];
-                    
+
                     layerKeys.forEach((key, idx) => {
                         const layer = layers[key];
                         if (layer) {
                             const pct = (layer.score / layer.max * 100).toFixed(0);
                             const statusColor = layer.status.includes('강세') || layer.status.includes('축적') || layer.status.includes('우호') || layer.status.includes('매집') || layer.status.includes('탐욕')
                                 ? '#10b981' : (layer.status.includes('약세') || layer.status.includes('분배') || layer.status.includes('비우호') || layer.status.includes('매도') || layer.status.includes('공포') ? '#ef4444' : '#eab308');
-                            
+
                             html += `
                                 <div class="bg-gray-800/50 rounded-lg p-3 border-l-4" style="border-color: ${layerColors[idx]}">
                                     <div class="flex justify-between items-center mb-2">
@@ -1074,7 +1253,7 @@
                             `;
                         }
                     });
-                    
+
                     html += '</div></div>';
                 }
 
@@ -1082,7 +1261,7 @@
                 const experts = data.experts || [];
                 if (experts.length > 0) {
                     html += '<div class="glass-card p-4"><h4 class="font-bold text-white mb-3">👔 전문가 의견</h4><div class="grid grid-cols-2 gap-2">';
-                    
+
                     experts.forEach(exp => {
                         const signal = exp.signal || '';
                         let signalClass = 'text-gray-400';
@@ -1100,7 +1279,7 @@
                             </div>
                         `;
                     });
-                    
+
                     html += '</div>';
 
                     // 컨센서스
