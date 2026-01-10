@@ -58,14 +58,17 @@ class HybridOrchestrator:
     """
     NICE Hybrid System 오케스트레이터
     
+    v2.0: Protocol Gates + Palantir Tracker 통합
+    
     사용법:
     >>> orch = HybridOrchestrator(capital=10000)
     >>> result = orch.run()
     >>> print(result.signal_type)  # 'A', 'B', or 'C'
     """
     
-    def __init__(self, capital: float = 10000.0):
+    def __init__(self, capital: float = 10000.0, strict_mode: bool = True):
         self.capital = capital
+        self.strict_mode = strict_mode  # Fail-Closed 모드
         
         # 모듈 임포트
         from .data_aggregator import DataAggregator
@@ -77,10 +80,26 @@ class HybridOrchestrator:
         self.scorer = NICEScorer()
         self.classifier = NICEClassifier()
         self.kelly = KellyCalculator(capital=capital)
+        
+        # v2.0: Protocol Gates + Palantir 통합
+        self.protocol_gates = None
+        self.palantir = None
+        
+        try:
+            from .protocol_gates import ProtocolGates
+            self.protocol_gates = ProtocolGates()
+        except Exception as e:
+            print(f"[WARN] Protocol Gates 로드 실패: {e}")
+        
+        try:
+            from .palantir_tracker import PalantirTracker
+            self.palantir = PalantirTracker()
+        except Exception as e:
+            print(f"[WARN] Palantir Tracker 로드 실패: {e}")
     
     def run(self, custom_data: Optional[Dict] = None) -> HybridResult:
         """
-        전체 파이프라인 실행
+        전체 파이프라인 실행 (Protocol Gates + Palantir 통합)
         
         Args:
             custom_data: 커스텀 데이터 (없으면 자동 수집)
@@ -94,34 +113,89 @@ class HybridOrchestrator:
         else:
             data = self.aggregator.collect_all()
         
-        # 2. NICE 점수 계산
+        # 2. Palantir: 데이터 계보 추적 시작
+        lineage = {}
+        if self.palantir:
+            lineage = self.palantir.build_lineage(data)
+        
+        # 3. NICE 점수 계산
         score_result = self.scorer.calculate(data)
         
-        # 3. Type 분류
+        # 4. Type 분류
         signal = self.classifier.classify(
             score=score_result.total_normalized,
             layer_details=score_result.to_dict()['layers']
         )
         
-        # 4. Kelly 계산
-        kelly_result = self.kelly.calculate(signal.signal_type.value)
+        # 5. ========== Protocol Gates 검증 (v2.0) ==========
+        gates_pass = True
+        gates_status = {'data_integrity': True, 'liquidity': True, 'confirm': True}
         
-        # 5. 체크리스트 생성
+        if self.protocol_gates and self.strict_mode:
+            try:
+                # Gate 1: 데이터 무결성
+                gates_status['data_integrity'] = self.protocol_gates.check_data_integrity(data)
+                
+                # Gate 2: 유동성 가드 (시뮬레이션 데이터)
+                orderbook = data.get('orderbook', {'bid_volume': 1000000, 'ask_volume': 1000000, 'spread': 0.1})
+                gates_status['liquidity'] = self.protocol_gates.check_liquidity_guards(orderbook)
+                
+                # Gate 3: 확인 게이트
+                gates_status['confirm'] = self.protocol_gates.check_confirm_gate(
+                    score_result.total_normalized,
+                    signal.confidence,
+                    score_result.to_dict()['layers']
+                )
+                
+                gates_pass = all(gates_status.values())
+                
+                # Fail-Closed: 게이트 하나라도 실패 시 Type C로 강등
+                if not gates_pass:
+                    signal.signal_type = type('SignalType', (), {'value': 'C'})()
+                    signal.action = '진입 금지 (Gate 실패)'
+                    signal.reasons.append(f"Protocol Gates 실패: {[k for k,v in gates_status.items() if not v]}")
+                    
+            except Exception as e:
+                print(f"[WARN] Protocol Gates 검증 실패: {e}")
+        
+        # 6. Kelly 계산 (게이트 통과 시에만 유효)
+        if gates_pass:
+            kelly_result = self.kelly.calculate(signal.signal_type.value)
+        else:
+            kelly_result = type('KellyResult', (), {'position_size': 0, 'kelly_pct': 0})()
+        
+        # 7. 체크리스트 생성
         checklist = self.classifier.get_entry_checklist(signal)
         
-        # 6. 결과 조합
-        return HybridResult(
+        # 8. Palantir: 증거 원장 기록
+        if self.palantir:
+            self.palantir.build_evidence({
+                'score': score_result.total_normalized,
+                'signal': signal.signal_type.value,
+                'gates_pass': gates_pass,
+                'gates_status': gates_status
+            })
+        
+        # 9. 결과 조합
+        result = HybridResult(
             score=score_result.total_normalized,
             signal_type=signal.signal_type.value,
             confidence=signal.confidence,
             action=signal.action,
-            kelly_pct=signal.kelly_pct,
+            kelly_pct=signal.kelly_pct if gates_pass else 0,
             position_size=kelly_result.position_size,
             layers=score_result.to_dict()['layers'],
             checklist=checklist,
             reasons=signal.reasons,
             timestamp=datetime.now()
         )
+        
+        # 10. 결과에 Gates 상태 추가
+        result.gates_pass = gates_pass
+        result.gates_status = gates_status
+        result.lineage = lineage
+        
+        return result
     
     def get_summary(self) -> str:
         """
