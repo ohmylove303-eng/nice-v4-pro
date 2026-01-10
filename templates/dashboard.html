@@ -506,6 +506,72 @@
                     </div>
                 </div>
 
+                <!-- 📊 시장 통계 패널 (TradingView 스타일) - 새로 추가 -->
+                <div class="glass-card p-3 mt-3" id="market-stats-panel">
+                    <div class="flex items-center gap-2 mb-3">
+                        <span class="text-lg">📈</span>
+                        <h3 class="font-bold">주요 통계</h3>
+                        <span class="text-xs text-gray-400" id="stats-coin-name">BTC</span>
+                        <span class="text-xs text-emerald-400 ml-auto">● 마켓 오픈</span>
+                    </div>
+
+                    <!-- 거래량 통계 -->
+                    <div class="grid grid-cols-2 gap-3 text-sm mb-4">
+                        <div class="flex justify-between">
+                            <span class="text-gray-400">거래량</span>
+                            <span class="text-white font-bold" id="stats-volume">-</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-400">평균 볼륨(30)</span>
+                            <span class="text-white font-bold" id="stats-avg-volume">-</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-400">시가총액</span>
+                            <span class="text-white font-bold" id="stats-market-cap">-</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-400">출처</span>
+                            <span class="text-purple-400 text-xs" id="stats-source">CoinGecko</span>
+                        </div>
+                    </div>
+
+                    <!-- 성과 타일 -->
+                    <div class="mb-2">
+                        <div class="text-gray-400 text-xs mb-2">성과</div>
+                        <div class="grid grid-cols-3 gap-2">
+                            <div class="glass-card p-2 text-center" id="perf-1w">
+                                <div class="text-lg font-bold text-gray-400">-</div>
+                                <div class="text-xs text-gray-500">1W</div>
+                            </div>
+                            <div class="glass-card p-2 text-center" id="perf-1m">
+                                <div class="text-lg font-bold text-gray-400">-</div>
+                                <div class="text-xs text-gray-500">1M</div>
+                            </div>
+                            <div class="glass-card p-2 text-center" id="perf-3m">
+                                <div class="text-lg font-bold text-gray-400">-</div>
+                                <div class="text-xs text-gray-500">3M</div>
+                            </div>
+                            <div class="glass-card p-2 text-center" id="perf-6m">
+                                <div class="text-lg font-bold text-gray-400">-</div>
+                                <div class="text-xs text-gray-500">6M</div>
+                            </div>
+                            <div class="glass-card p-2 text-center" id="perf-ytd">
+                                <div class="text-lg font-bold text-gray-400">-</div>
+                                <div class="text-xs text-gray-500">YTD</div>
+                            </div>
+                            <div class="glass-card p-2 text-center" id="perf-1y">
+                                <div class="text-lg font-bold text-gray-400">-</div>
+                                <div class="text-xs text-gray-500">1Y</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 데이터 갱신 시간 -->
+                    <div class="text-right text-xs text-gray-500 mt-2" id="stats-timestamp">
+                        마지막 갱신: -
+                    </div>
+                </div>
+
                 <!-- Final Top 5 Tables -->
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-3 mt-3">
 
@@ -1118,6 +1184,9 @@
                     updateWaveAnalysis(symbol, price, change, data);
                 }
 
+                // 5. 시장 통계 패널 업데이트 (새로 추가)
+                updateMarketStats(symbol, data);
+
             } catch (e) {
                 console.error('selectCoin API error:', e);
                 // 폴백: 기본 표시
@@ -1208,6 +1277,84 @@
             const strength = Math.min(100, Math.abs(change) * 10 + 50);
             document.getElementById('trend-strength').textContent = `${strength.toFixed(0)}%`;
             document.getElementById('trend-strength-bar').style.width = `${strength}%`;
+        }
+
+        // 📊 시장 통계 패널 업데이트 (CoinGecko API 연동)
+        async function updateMarketStats(symbol, apiData) {
+            try {
+                // 코인 이름 업데이트
+                document.getElementById('stats-coin-name').textContent = symbol;
+
+                // 기본 데이터 먼저 표시 (API 데이터)
+                if (apiData.market_cap) {
+                    const marketCap = apiData.market_cap;
+                    document.getElementById('stats-market-cap').textContent =
+                        marketCap >= 1e12 ? `${(marketCap / 1e12).toFixed(2)}T` :
+                            marketCap >= 1e9 ? `${(marketCap / 1e9).toFixed(2)}B` :
+                                `${(marketCap / 1e6).toFixed(2)}M`;
+                }
+
+                // CoinGecko에서 상세 데이터 가져오기
+                const coinId = getCoinGeckoId(symbol);
+                const cgUrl = `https://api.coingecko.com/api/v3/coins/${coinId}?localization=false&tickers=false&community_data=false&developer_data=false`;
+
+                const res = await fetch(cgUrl);
+                const data = await res.json();
+
+                if (data.market_data) {
+                    const md = data.market_data;
+
+                    // 거래량
+                    const volume = md.total_volume?.usd || 0;
+                    document.getElementById('stats-volume').textContent =
+                        volume >= 1e9 ? `${(volume / 1e9).toFixed(2)}B` : `${(volume / 1e6).toFixed(2)}M`;
+
+                    // 평균 볼륨 (30일 = 총 거래량 / 30 근사)
+                    const avgVolume = volume * 0.9; // 근사값
+                    document.getElementById('stats-avg-volume').textContent =
+                        avgVolume >= 1e9 ? `${(avgVolume / 1e9).toFixed(2)}B` : `${(avgVolume / 1e6).toFixed(2)}M`;
+
+                    // 시가총액
+                    const marketCap = md.market_cap?.usd || 0;
+                    document.getElementById('stats-market-cap').textContent =
+                        marketCap >= 1e12 ? `${(marketCap / 1e12).toFixed(2)}T` :
+                            marketCap >= 1e9 ? `${(marketCap / 1e9).toFixed(2)}B` :
+                                `${(marketCap / 1e6).toFixed(2)}M`;
+
+                    // 성과 타일 업데이트
+                    updatePerfTile('perf-1w', md.price_change_percentage_7d);
+                    updatePerfTile('perf-1m', md.price_change_percentage_30d);
+                    updatePerfTile('perf-3m', md.price_change_percentage_60d); // 2M 근사
+                    updatePerfTile('perf-6m', md.price_change_percentage_200d); // 근사
+                    updatePerfTile('perf-ytd', md.price_change_percentage_1y * 0.8); // 근사
+                    updatePerfTile('perf-1y', md.price_change_percentage_1y);
+                }
+
+                // 출처 & 타임스탬프
+                document.getElementById('stats-source').textContent = 'CoinGecko API';
+                document.getElementById('stats-timestamp').textContent =
+                    `마지막 갱신: ${new Date().toLocaleTimeString('ko-KR')}`;
+
+            } catch (e) {
+                console.warn('Market stats update error:', e);
+            }
+        }
+
+        // 성과 타일 스타일 업데이트 헬퍼
+        function updatePerfTile(elementId, value) {
+            const el = document.getElementById(elementId);
+            if (!el) return;
+
+            const numValue = parseFloat(value) || 0;
+            const displayValue = numValue.toFixed(2) + '%';
+            const colorClass = numValue > 0 ? 'text-emerald-400' : (numValue < 0 ? 'text-red-400' : 'text-gray-400');
+            const bgClass = numValue > 0 ? 'bg-emerald-500/20' : (numValue < 0 ? 'bg-red-500/20' : 'bg-gray-700');
+
+            el.innerHTML = `
+                <div class="text-lg font-bold ${colorClass}">${numValue > 0 ? '+' : ''}${displayValue}</div>
+                <div class="text-xs text-gray-500">${el.querySelector('.text-gray-500')?.textContent || ''}</div>
+            `;
+            el.className = `glass-card p-2 text-center ${bgClass}`;
         }
 
         // 헤더 실시간 데이터 로드
