@@ -12,12 +12,53 @@
         rel="stylesheet">
 
     <style>
+        /* ========== Mantine-Inspired Dark Theme Variables ========== */
+        :root {
+            /* Mantine Dark Color Scale */
+            --mantine-color-dark-0: #c9c9c9;
+            --mantine-color-dark-1: #b8b8b8;
+            --mantine-color-dark-2: #828282;
+            --mantine-color-dark-3: #696969;
+            --mantine-color-dark-4: #424242;
+            --mantine-color-dark-5: #3b3b3b;
+            --mantine-color-dark-6: #2e2e2e;
+            --mantine-color-dark-7: #242424;
+            --mantine-color-dark-8: #1f1f1f;
+            --mantine-color-dark-9: #141414;
+
+            /* Mantine Primary (Blue) */
+            --mantine-primary-0: #e7f5ff;
+            --mantine-primary-5: #228be6;
+            --mantine-primary-6: #1c7ed6;
+            --mantine-primary-9: #1864ab;
+
+            /* Mantine Teal (Success) */
+            --mantine-teal-5: #12b886;
+            --mantine-teal-6: #0ca678;
+
+            /* Mantine Red (Error) */
+            --mantine-red-5: #fa5252;
+            --mantine-red-6: #f03e3e;
+
+            /* Mantine Yellow (Warning) */
+            --mantine-yellow-5: #fab005;
+            --mantine-yellow-6: #f59f00;
+
+            /* Mantine Grape (Accent) */
+            --mantine-grape-5: #be4bdb;
+            --mantine-grape-6: #ae3ec9;
+
+            /* Mantine Cyan (Info) */
+            --mantine-cyan-5: #15aabf;
+            --mantine-cyan-6: #1098ad;
+        }
+
         * {
             font-family: 'Noto Sans KR', sans-serif;
         }
 
         body {
-            background: linear-gradient(135deg, #0a0a15 0%, #1a1a2e 100%);
+            background: linear-gradient(135deg, var(--mantine-color-dark-9) 0%, var(--mantine-color-dark-7) 100%);
             min-height: 100vh;
         }
 
@@ -723,7 +764,7 @@
 
             <!-- AI 리포트 탭 (고정 레이아웃) -->
             <div id="tab-report" class="tab-content"
-                style="height: calc(100vh - 180px); display: flex; flex-direction: column; overflow: hidden;">
+                style="height: calc(100vh - 180px); display: flex; flex-direction: column; overflow-y: auto;">
                 <!-- 상단 요약 카드 (고정 높이) -->
                 <div class="glass-card p-3 mb-2" style="flex-shrink: 0;">
                     <div class="flex items-center justify-between mb-2">

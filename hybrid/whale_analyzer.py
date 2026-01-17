@@ -432,9 +432,28 @@ class WhaleAnalyzer:
         major_coins.sort(key=sort_key)
         other_coins.sort(key=sort_key)
         
+        # BTC와 ETH는 항상 메이저 목록에 포함 (변동률이 낮아도)
+        must_include = ['BTC', 'ETH']
+        major_result = []
+        seen_symbols = set()
+        
+        # 먼저 BTC/ETH 추가
+        for coin in major_coins:
+            if coin['symbol'] in must_include:
+                major_result.append(coin)
+                seen_symbols.add(coin['symbol'])
+        
+        # 나머지 메이저 코인 추가 (상한 10개)
+        for coin in major_coins:
+            if coin['symbol'] not in seen_symbols:
+                major_result.append(coin)
+                seen_symbols.add(coin['symbol'])
+                if len(major_result) >= 10:
+                    break
+        
         return {
-            'major': major_coins[:5],
-            'other': other_coins[:5],
+            'major': major_result,  # BTC/ETH 항상 포함 + 최대 10개
+            'other': other_coins[:10],  # 상한 10개로 증가
             'timeframe': timeframe,
             'timestamp': datetime.now().isoformat()
         }

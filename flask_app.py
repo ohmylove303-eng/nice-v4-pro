@@ -23,6 +23,42 @@ logger = logging.getLogger(__name__)
 
 
 # ============================================================
+# BITHUMB COIN LIST LOADER
+# ============================================================
+
+def load_bithumb_coins():
+    """
+    Load 448 Bithumb coins from bithumb_all_coins.txt
+    Format: BITHUMB:BTCKRW -> BTC
+    """
+    import os
+    
+    coin_file = os.path.join(os.path.dirname(__file__), 'bithumb_all_coins.txt')
+    coins = []
+    
+    try:
+        if os.path.exists(coin_file):
+            with open(coin_file, 'r') as f:
+                for line in f:
+                    line = line.strip()
+                    if line.startswith('BITHUMB:') and line.endswith('KRW'):
+                        # Extract symbol: BITHUMB:BTCKRW -> BTC
+                        symbol = line.replace('BITHUMB:', '').replace('KRW', '')
+                        if symbol:
+                            coins.append(symbol)
+            logger.info(f"Loaded {len(coins)} Bithumb coins from file")
+        else:
+            logger.warning(f"Bithumb coin file not found: {coin_file}")
+    except Exception as e:
+        logger.error(f"Error loading Bithumb coins: {e}")
+    
+    return coins
+
+# Cache the coin list
+BITHUMB_COINS = load_bithumb_coins()
+
+
+# ============================================================
 # HEALTH CHECK & SYSTEM STATUS
 # ============================================================
 
