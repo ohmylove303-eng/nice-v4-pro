@@ -895,6 +895,111 @@ def api_nice_experts():
         return jsonify({'error': str(e)}), 500
 
 
+# ============================================================
+# PERPLEXITY AI FINANCE API
+# ============================================================
+
+@app.route('/api/ai/perplexity-finance')
+def api_perplexity_finance():
+    """
+    Perplexity AI 금융 분석 API
+    sonar-pro 모델로 실시간 암호화폐/금융 정보 제공
+    """
+    import os
+    import requests
+    
+    api_key = os.getenv('PERPLEXITY_API_KEY')
+    if not api_key:
+        return jsonify({'error': 'PERPLEXITY_API_KEY not configured'}), 500
+    
+    try:
+        # 쿼리 파라미터
+        symbol = request.args.get('symbol', 'BTC')
+        query_type = request.args.get('type', 'analysis')  # analysis, news, sentiment
+        
+        # 쿼리 타입별 프롬프트
+        if query_type == 'news':
+            prompt = f"""
+            {symbol} 암호화폐에 대한 최신 뉴스와 이벤트를 요약해주세요.
+            - 최근 24시간 내 주요 뉴스
+            - 가격에 영향을 줄 수 있는 이벤트
+            - 규제 관련 소식
+            한국어로 간결하게 답변해주세요.
+            """
+        elif query_type == 'sentiment':
+            prompt = f"""
+            현재 {symbol} 암호화폐의 시장 심리를 분석해주세요.
+            - 소셜 미디어 트렌드
+            - 투자자 심리 (공포/탐욕)
+            - 기관 투자자 동향
+            한국어로 간결하게 답변해주세요.
+            """
+        else:  # analysis
+            prompt = f"""
+            {symbol} 암호화폐의 현재 시장 상황을 분석해주세요.
+            - 현재 가격 및 24시간 변동률
+            - 주요 지지선/저항선
+            - 단기 전망 (상승/하락/횡보)
+            - 주요 리스크 요인
+            한국어로 간결하게 답변해주세요.
+            """
+        
+        # Perplexity API 호출 (OpenAI 호환 방식)
+        headers = {
+            'Authorization': f'Bearer {api_key}',
+            'Content-Type': 'application/json'
+        }
+        
+        payload = {
+            'model': 'sonar-pro',
+            'messages': [
+                {
+                    'role': 'system',
+                    'content': '당신은 전문 암호화폐 분석가입니다. 실시간 시장 데이터와 뉴스를 기반으로 정확한 분석을 제공합니다.'
+                },
+                {
+                    'role': 'user',
+                    'content': prompt
+                }
+            ],
+            'temperature': 0.2,
+            'max_tokens': 1000
+        }
+        
+        response = requests.post(
+            'https://api.perplexity.ai/chat/completions',
+            headers=headers,
+            json=payload,
+            timeout=30
+        )
+        
+        if response.status_code != 200:
+            logger.error(f"Perplexity API error: {response.status_code} - {response.text}")
+            return jsonify({'error': f'Perplexity API error: {response.status_code}'}), 500
+        
+        data = response.json()
+        
+        # 응답 파싱
+        content = data.get('choices', [{}])[0].get('message', {}).get('content', '')
+        citations = data.get('citations', [])
+        
+        return jsonify({
+            'symbol': symbol,
+            'type': query_type,
+            'analysis': content,
+            'citations': citations,
+            'model': 'sonar-pro',
+            'timestamp': datetime.now().isoformat()
+        })
+        
+    except requests.exceptions.Timeout:
+        return jsonify({'error': 'Perplexity API timeout'}), 504
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+
 @app.route('/api/nice/protocol-gates')
 def api_nice_protocol_gates():
     """Protocol Gates v2.6.1 - Fail-Closed 검증 API"""
