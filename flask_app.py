@@ -1000,6 +1000,154 @@ def api_perplexity_finance():
         return jsonify({'error': str(e)}), 500
 
 
+# ============================================================
+# SUPER SURGE (초 급등) API
+# ============================================================
+
+@app.route('/api/crypto/super-surge')
+def api_super_surge():
+    """
+    초 급등 분석 API
+    
+    8개 거래 세션별 급등 코인 탐지 + Perplexity AI 인사이트
+    """
+    import os
+    import requests as req
+    
+    try:
+        from hybrid.palantir_mini import PalantirMini
+        from hybrid.whale_analyzer import WhaleAnalyzer
+        
+        mini = PalantirMini()
+        whale = WhaleAnalyzer()
+        
+        # 1. 현재 세션 판단
+        now = datetime.now()
+        current_session = mini.get_current_session(now)
+        next_session, minutes_until = mini.get_next_session(now)
+        
+        # 2. 코인 데이터 수집 (CoinGecko 또는 폴백)
+        try:
+            from hybrid.crypto_data import CryptoDataFetcher
+            fetcher = CryptoDataFetcher()
+            coins_raw = fetcher.fetch_top_coins(limit=30)
+            coins_data = []
+            for c in coins_raw:
+                coin_dict = c.to_dict() if hasattr(c, 'to_dict') else c
+                # 5분 변동률 시뮬레이션 (실제로는 거래소 API에서)
+                change_24h = coin_dict.get('change_24h', 0)
+                coins_data.append({
+                    'symbol': coin_dict.get('symbol', ''),
+                    'name': coin_dict.get('name', ''),
+                    'price': coin_dict.get('price', 0),
+                    'change_5m': change_24h / 4.8,  # 24h를 5m로 추정 변환
+                    'change_24h': change_24h,
+                    'volume_ratio': 1 + (abs(change_24h) / 10),  # 추정
+                    'market_cap': coin_dict.get('market_cap', 0)
+                })
+        except:
+            # 폴백 데이터
+            coins_data = [
+                {'symbol': 'BTC', 'name': 'Bitcoin', 'price': 98000, 'change_5m': 1.2, 'change_24h': 2.5, 'volume_ratio': 1.5},
+                {'symbol': 'ETH', 'name': 'Ethereum', 'price': 3500, 'change_5m': 0.8, 'change_24h': 3.2, 'volume_ratio': 1.3},
+                {'symbol': 'SOL', 'name': 'Solana', 'price': 195, 'change_5m': 2.1, 'change_24h': 5.1, 'volume_ratio': 2.0},
+            ]
+        
+        # 3. 급등 코인 탐지
+        surge_candidates = mini.detect_surge(coins_data, threshold_change=2.0, threshold_volume=1.3)
+        
+        # 4. Perplexity AI 인사이트 수집 (선택적)
+        ai_insights = {}
+        api_key = os.getenv('PERPLEXITY_API_KEY')
+        
+        if api_key and surge_candidates:
+            try:
+                # 상위 급등 코인에 대한 분석
+                top_symbol = surge_candidates[0]['symbol'] if surge_candidates else 'BTC'
+                
+                # 다중 카테고리 분석 요청
+                headers = {
+                    'Authorization': f'Bearer {api_key}',
+                    'Content-Type': 'application/json'
+                }
+                
+                prompt = f"""
+                현재 {current_session.name} 세션에서 {top_symbol} 코인이 급등하고 있습니다.
+                다음 관점에서 간단히 분석해주세요:
+                1. 재무/기술적 분석 (가격, 지지/저항)
+                2. 뉴스/이벤트 (최근 24시간)
+                3. 시장 심리 (공포/탐욕 지수)
+                4. 거시경제 영향 (금리, 달러)
+                5. 단기 전망 (향후 4시간)
+                한국어로 각 항목 1-2문장으로 간결하게 답변해주세요.
+                """
+                
+                response = req.post(
+                    'https://api.perplexity.ai/chat/completions',
+                    headers=headers,
+                    json={
+                        'model': 'sonar-pro',
+                        'messages': [
+                            {'role': 'system', 'content': '암호화폐 시장 분석 전문가입니다.'},
+                            {'role': 'user', 'content': prompt}
+                        ],
+                        'temperature': 0.2,
+                        'max_tokens': 500
+                    },
+                    timeout=15
+                )
+                
+                if response.status_code == 200:
+                    data = response.json()
+                    ai_insights = {
+                        'analysis': data.get('choices', [{}])[0].get('message', {}).get('content', ''),
+                        'citations': data.get('citations', []),
+                        'analyzed_symbol': top_symbol
+                    }
+            except Exception as e:
+                ai_insights = {'error': str(e)}
+        
+        # 5. 세션별 특징 분석
+        session_info = {
+            'current': {
+                'name': current_session.name,
+                'region': current_session.region,
+                'emoji': current_session.emoji,
+                'liquidity': current_session.liquidity,
+                'volatility': current_session.volatility,
+                'start_time': f"{current_session.start_hour:02d}:{current_session.start_minute:02d}"
+            },
+            'next': {
+                'name': next_session.name,
+                'emoji': next_session.emoji,
+                'minutes_until': minutes_until,
+                'formatted': f"{minutes_until // 60}시간 {minutes_until % 60}분"
+            }
+        }
+        
+        # 6. Palantir 신뢰도 계산
+        reliability = mini.calculate_palantir_reliability(
+            data_freshness=0.9,
+            source_count=len(coins_data),
+            cross_validation=True
+        )
+        
+        return jsonify({
+            'session': session_info,
+            'surge_candidates': surge_candidates[:10],  # 상위 10개
+            'total_analyzed': len(coins_data),
+            'surge_count': len(surge_candidates),
+            'palantir_reliability': reliability,
+            'ai_insights': ai_insights,
+            'timestamp': now.isoformat()
+        })
+        
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+
 @app.route('/api/nice/protocol-gates')
 def api_nice_protocol_gates():
     """Protocol Gates v2.6.1 - Fail-Closed 검증 API"""

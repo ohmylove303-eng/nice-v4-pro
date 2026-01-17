@@ -468,6 +468,7 @@
                 <button class="tab-btn" data-tab="short">📈 단기 (30분~2시간)</button>
                 <button class="tab-btn" data-tab="medium">🔄 중기 (2시간~1일)</button>
                 <button class="tab-btn" data-tab="long">📊 장기 (1일~1주)</button>
+                <button class="tab-btn" data-tab="surge">🚀 초 급등</button>
                 <button class="tab-btn" data-tab="report">📋 AI 리포트</button>
                 <button class="tab-btn" data-tab="analysis">🔍 시장 정밀 분석</button>
             </div>
@@ -810,6 +811,63 @@
                         <div id="expert-views" class="flex-1 overflow-y-auto space-y-2 text-sm pr-1"
                             style="max-height: 100%;">
                             로딩 중...
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 초 급등 탭 -->
+            <div id="tab-surge" class="tab-content" style="height: calc(100vh - 180px); overflow-y: auto;">
+                <div class="space-y-4 pb-4">
+                    <!-- 세션 표시기 -->
+                    <div class="glass-card p-4 rounded-xl">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <h3 class="font-bold text-lg" id="surge-session-name">🌏 현재 세션 로딩...</h3>
+                                <p class="text-gray-400 text-sm" id="surge-session-details">유동성: - | 변동성: -</p>
+                            </div>
+                            <div class="text-right">
+                                <div class="text-sm text-gray-400">다음 세션까지</div>
+                                <div class="font-bold text-xl text-purple-400" id="surge-countdown">--:--</div>
+                                <div class="text-xs text-gray-500" id="surge-next-session">-</div>
+                            </div>
+                        </div>
+                        <!-- 세션 타임라인 -->
+                        <div class="mt-3 flex gap-1 overflow-x-auto">
+                            <div class="px-2 py-1 bg-gray-800 rounded text-xs">🌅 06:30</div>
+                            <div class="px-2 py-1 bg-gray-800 rounded text-xs">🌏 09:00</div>
+                            <div class="px-2 py-1 bg-gray-800 rounded text-xs">☀️ 12:00</div>
+                            <div class="px-2 py-1 bg-gray-800 rounded text-xs">🌍 14:00</div>
+                            <div class="px-2 py-1 bg-purple-600 rounded text-xs font-bold">🌆 16:30</div>
+                            <div class="px-2 py-1 bg-gray-800 rounded text-xs">🌇 19:30</div>
+                            <div class="px-2 py-1 bg-gray-800 rounded text-xs">🌎 21:30</div>
+                            <div class="px-2 py-1 bg-gray-800 rounded text-xs">🌐 24:00</div>
+                        </div>
+                    </div>
+
+                    <!-- 급등 코인 리스트 -->
+                    <div class="glass-card p-4 rounded-xl">
+                        <div class="flex items-center justify-between mb-3">
+                            <h3 class="font-bold">🚀 급등 코인 TOP 10</h3>
+                            <button onclick="loadSuperSurge()"
+                                class="px-3 py-1 bg-purple-600 hover:bg-purple-500 rounded-lg text-sm">
+                                🔄 새로고침
+                            </button>
+                        </div>
+                        <div id="surge-coins-list" class="grid grid-cols-1 md:grid-cols-2 gap-2">
+                            <div class="text-gray-400 text-center py-8">로딩 중...</div>
+                        </div>
+                        <div class="mt-3 text-sm text-gray-500 flex justify-between">
+                            <span id="surge-analyzed-count">분석된 코인: -</span>
+                            <span id="surge-reliability">Palantir 신뢰도: -</span>
+                        </div>
+                    </div>
+
+                    <!-- AI 인사이트 (Perplexity) -->
+                    <div class="glass-card p-4 rounded-xl">
+                        <h3 class="font-bold mb-3">🤖 AI 인사이트 (Perplexity)</h3>
+                        <div id="surge-ai-insights" class="text-sm text-gray-300 space-y-2">
+                            <div class="text-gray-400">AI 분석을 로딩하려면 새로고침을 클릭하세요.</div>
                         </div>
                     </div>
                 </div>
@@ -1923,6 +1981,113 @@
 
             } catch (e) {
                 console.error('Rankings load error:', e);
+            }
+        }
+
+        // ========== 초 급등 (Super Surge) 로드 ==========
+        async function loadSuperSurge() {
+            try {
+                // UI 로딩 상태
+                document.getElementById('surge-coins-list').innerHTML =
+                    '<div class="text-gray-400 text-center py-8 col-span-2">🔄 급등 코인 분석 중...</div>';
+                document.getElementById('surge-ai-insights').innerHTML =
+                    '<div class="text-gray-400">🤖 AI 분석 진행 중... (Perplexity sonar-pro)</div>';
+
+                const res = await fetch('/api/crypto/super-surge');
+                const data = await res.json();
+
+                if (data.error) {
+                    console.error('Super Surge error:', data.error);
+                    document.getElementById('surge-coins-list').innerHTML =
+                        `<div class="text-red-400 text-center py-8 col-span-2">오류: ${data.error}</div>`;
+                    return;
+                }
+
+                // 1. 세션 정보 업데이트
+                const session = data.session;
+                document.getElementById('surge-session-name').textContent =
+                    `${session.current.emoji} ${session.current.name}`;
+                document.getElementById('surge-session-details').textContent =
+                    `유동성: ${session.current.liquidity} | 변동성: ${session.current.volatility} | 시작: ${session.current.start_time}`;
+                document.getElementById('surge-countdown').textContent = session.next.formatted;
+                document.getElementById('surge-next-session').textContent =
+                    `${session.next.emoji} ${session.next.name}`;
+
+                // 2. 급등 코인 리스트 렌더링
+                const surgeCoins = data.surge_candidates || [];
+                if (surgeCoins.length === 0) {
+                    document.getElementById('surge-coins-list').innerHTML =
+                        '<div class="text-gray-400 text-center py-8 col-span-2">현재 급등 중인 코인이 없습니다.</div>';
+                } else {
+                    document.getElementById('surge-coins-list').innerHTML = surgeCoins.map(coin => {
+                        const changeColor = coin.change_5m >= 0 ? 'text-emerald-400' : 'text-red-400';
+                        const signalColor = coin.quick_score >= 80 ? 'bg-emerald-600' :
+                            (coin.quick_score >= 60 ? 'bg-yellow-600' : 'bg-gray-600');
+                        return `
+                            <div class="glass-card p-3 rounded-lg cursor-pointer hover:bg-white/5 transition"
+                                 onclick="selectCoin('${coin.symbol}')">
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <span class="font-bold">${coin.symbol}</span>
+                                        <span class="text-gray-400 text-xs ml-1">${coin.name || ''}</span>
+                                    </div>
+                                    <span class="${signalColor} px-2 py-0.5 rounded text-xs font-bold">
+                                        ${coin.surge_signal}
+                                    </span>
+                                </div>
+                                <div class="flex items-center justify-between mt-2 text-sm">
+                                    <span class="text-gray-400">5분 변동</span>
+                                    <span class="${changeColor} font-bold">
+                                        ${coin.change_5m >= 0 ? '+' : ''}${coin.change_5m.toFixed(2)}%
+                                    </span>
+                                </div>
+                                <div class="flex items-center justify-between text-sm">
+                                    <span class="text-gray-400">Quick Score</span>
+                                    <span class="font-bold">${coin.quick_score}/100</span>
+                                </div>
+                            </div>
+                        `;
+                    }).join('');
+                }
+
+                // 3. 통계 업데이트
+                document.getElementById('surge-analyzed-count').textContent =
+                    `분석된 코인: ${data.total_analyzed}개 (급등: ${data.surge_count}개)`;
+                document.getElementById('surge-reliability').textContent =
+                    `Palantir 신뢰도: ${(data.palantir_reliability * 100).toFixed(1)}%`;
+
+                // 4. AI 인사이트 렌더링
+                const aiInsights = data.ai_insights;
+                if (aiInsights && aiInsights.analysis) {
+                    document.getElementById('surge-ai-insights').innerHTML = `
+                        <div class="bg-purple-900/30 p-3 rounded-lg">
+                            <div class="flex items-center gap-2 mb-2">
+                                <span class="text-purple-400 font-bold">📍 ${aiInsights.analyzed_symbol || 'BTC'} 분석</span>
+                                <span class="text-xs text-gray-500">| Perplexity sonar-pro</span>
+                            </div>
+                            <div class="whitespace-pre-wrap text-sm leading-relaxed">
+                                ${aiInsights.analysis}
+                            </div>
+                            ${aiInsights.citations && aiInsights.citations.length > 0 ?
+                            `<div class="mt-2 text-xs text-gray-500">
+                                    출처: ${aiInsights.citations.slice(0, 3).join(', ')}
+                                </div>` : ''}
+                        </div>
+                    `;
+                } else if (aiInsights && aiInsights.error) {
+                    document.getElementById('surge-ai-insights').innerHTML =
+                        `<div class="text-yellow-400">⚠️ AI 분석 오류: ${aiInsights.error}</div>`;
+                } else {
+                    document.getElementById('surge-ai-insights').innerHTML =
+                        '<div class="text-gray-400">AI 분석 데이터 없음 (API 키 확인 필요)</div>';
+                }
+
+                console.log('Super Surge loaded:', data);
+
+            } catch (e) {
+                console.error('Super Surge load error:', e);
+                document.getElementById('surge-coins-list').innerHTML =
+                    `<div class="text-red-400 text-center py-8 col-span-2">로드 실패: ${e.message}</div>`;
             }
         }
 
