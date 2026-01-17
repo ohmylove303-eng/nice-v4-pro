@@ -1026,32 +1026,73 @@ def api_super_surge():
         current_session = mini.get_current_session(now)
         next_session, minutes_until = mini.get_next_session(now)
         
-        # 2. 코인 데이터 수집 (CoinGecko 또는 폴백)
+        # 2. 빗썸 실시간 데이터 수집 (Bithumb Public API)
+        coins_data = []
         try:
-            from hybrid.crypto_data import CryptoDataFetcher
-            fetcher = CryptoDataFetcher()
-            coins_raw = fetcher.fetch_top_coins(limit=30)
-            coins_data = []
-            for c in coins_raw:
-                coin_dict = c.to_dict() if hasattr(c, 'to_dict') else c
-                # 5분 변동률 시뮬레이션 (실제로는 거래소 API에서)
-                change_24h = coin_dict.get('change_24h', 0)
-                coins_data.append({
-                    'symbol': coin_dict.get('symbol', ''),
-                    'name': coin_dict.get('name', ''),
-                    'price': coin_dict.get('price', 0),
-                    'change_5m': change_24h / 4.8,  # 24h를 5m로 추정 변환
-                    'change_24h': change_24h,
-                    'volume_ratio': 1 + (abs(change_24h) / 10),  # 추정
-                    'market_cap': coin_dict.get('market_cap', 0)
-                })
-        except:
-            # 폴백 데이터
-            coins_data = [
-                {'symbol': 'BTC', 'name': 'Bitcoin', 'price': 98000, 'change_5m': 1.2, 'change_24h': 2.5, 'volume_ratio': 1.5},
-                {'symbol': 'ETH', 'name': 'Ethereum', 'price': 3500, 'change_5m': 0.8, 'change_24h': 3.2, 'volume_ratio': 1.3},
-                {'symbol': 'SOL', 'name': 'Solana', 'price': 195, 'change_5m': 2.1, 'change_24h': 5.1, 'volume_ratio': 2.0},
-            ]
+            import requests as req
+            bithumb_response = req.get('https://api.bithumb.com/public/ticker/ALL_KRW', timeout=10)
+            bithumb_data = bithumb_response.json()
+            
+            if bithumb_data.get('status') == '0000':
+                data = bithumb_data.get('data', {})
+                
+                for symbol, coin_info in data.items():
+                    if symbol == 'date':  # 타임스탬프 필드 스킵
+                        continue
+                    
+                    try:
+                        change_24h = float(coin_info.get('fluctate_rate_24H', 0))
+                        closing_price = float(coin_info.get('closing_price', 0))
+                        opening_price = float(coin_info.get('opening_price', 1))
+                        
+                        # 거래량 비율 계산 (24시간 거래대금 기준)
+                        acc_trade = float(coin_info.get('acc_trade_value_24H', 0))
+                        volume_ratio = 1 + (acc_trade / 1e10)  # 100억 기준 정규화
+                        
+                        coins_data.append({
+                            'symbol': symbol,
+                            'name': symbol,  # 빗썸은 이름 미제공
+                            'price': closing_price,
+                            'price_krw': f"{closing_price:,.0f}원",
+                            'change_5m': change_24h / 4.8,  # 추정
+                            'change_24h': change_24h,
+                            'volume_ratio': min(5, volume_ratio),
+                            'opening_price': opening_price,
+                            'max_price': float(coin_info.get('max_price', 0)),
+                            'min_price': float(coin_info.get('min_price', 0)),
+                            'source': 'bithumb'
+                        })
+                    except (ValueError, TypeError):
+                        continue
+                
+                logger.info(f"Bithumb API: {len(coins_data)} coins loaded")
+            else:
+                raise Exception(f"Bithumb API error: {bithumb_data.get('status')}")
+                
+        except Exception as e:
+            logger.error(f"Bithumb API failed: {e}, falling back to CoinGecko")
+            # 폴백: CoinGecko
+            try:
+                from hybrid.crypto_data import CryptoDataFetcher
+                fetcher = CryptoDataFetcher()
+                coins_raw = fetcher.fetch_top_coins(limit=30)
+                for c in coins_raw:
+                    coin_dict = c.to_dict() if hasattr(c, 'to_dict') else c
+                    change_24h = coin_dict.get('change_24h', 0)
+                    coins_data.append({
+                        'symbol': coin_dict.get('symbol', ''),
+                        'name': coin_dict.get('name', ''),
+                        'price': coin_dict.get('price', 0),
+                        'change_5m': change_24h / 4.8,
+                        'change_24h': change_24h,
+                        'volume_ratio': 1 + (abs(change_24h) / 10),
+                        'source': 'coingecko'
+                    })
+            except:
+                # 최종 폴백
+                coins_data = [
+                    {'symbol': 'BTC', 'name': 'Bitcoin', 'price': 140000000, 'change_5m': 1.0, 'change_24h': 2.0, 'volume_ratio': 1.5, 'source': 'fallback'},
+                ]
         
         # 3. 급등 코인 탐지
         surge_candidates = mini.detect_surge(coins_data, threshold_change=2.0, threshold_volume=1.3)
