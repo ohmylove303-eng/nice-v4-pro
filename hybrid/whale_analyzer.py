@@ -262,29 +262,45 @@ class WhaleAnalyzer:
             }
         )
     
-    def calculate_nice_score(self, symbol: str, change_24h: float, volume_ratio: float) -> tuple:
+    def calculate_nice_score(
+        self, 
+        symbol: str, 
+        change_24h: float, 
+        volume_ratio: float,
+        palantir_reliability: float = 0.85
+    ) -> tuple:
         """
-        NICE 5레이어 점수 계산
+        NICE 5레이어 + Palantir 신뢰도 점수 계산
+        
+        Palantir 신뢰도가 높을수록 보너스 점수 부여 (최대 +5점)
+        → 데이터 품질이 좋을 때만 높은 점수 획득 가능
         """
-        # 기술 점수 (상승률 기반)
+        # 1. 기술 점수 (상승률 기반) - 최대 30점
         tech_score = min(30, max(0, 15 + change_24h * 2))
         
-        # 거래량 점수
+        # 2. 거래량 점수 - 최대 20점
         vol_score = min(20, max(0, volume_ratio * 10))
         
-        # OnChain 점수 (메이저 코인 우대) - 결정적
+        # 3. OnChain 점수 (메이저 코인 우대) - 결정적, 최대 20점
         h = _det_hash(symbol, 'nice')
         onchain_score = 20 if self.is_major(symbol) else 10 + (h % 9)  # 10-18
         
-        # 심리/매크로/기관 점수 (공통) - 결정적
+        # 4. 심리/매크로/기관 점수 (공통) - 결정적
         sentiment_score = 8 + (h % 8)  # 8-15
         macro_score = 5 + (h % 6)  # 5-10
         institutional_score = (5 + (h % 11)) if self.is_major(symbol) else (2 + (h % 7))  # 5-15 or 2-8
         
-        total_score = int(tech_score + vol_score + onchain_score + sentiment_score + macro_score + institutional_score)
+        # 5. Palantir 신뢰도 보너스 (NEW!) - 최대 +5점
+        # 신뢰도 0.6 미만: 0점, 0.6~1.0: 0~5점
+        palantir_bonus = max(0, (palantir_reliability - 0.6) * 12.5)  # (1.0-0.6)*12.5 = 5
+        palantir_bonus = min(5, palantir_bonus)
+        
+        # 총점 계산
+        base_score = tech_score + vol_score + onchain_score + sentiment_score + macro_score + institutional_score
+        total_score = int(base_score + palantir_bonus)
         total_score = min(100, max(0, total_score))
         
-        # Type 결정
+        # Type 결정 (Palantir 보너스 포함)
         if total_score >= 75:
             nice_type = 'A'
         elif total_score >= 55:
