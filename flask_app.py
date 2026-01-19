@@ -57,6 +57,40 @@ def load_bithumb_coins():
 # Cache the coin list
 BITHUMB_COINS = load_bithumb_coins()
 
+# ============================================================
+# ADMIN CONFIG API (API KEY SETUP)
+# ============================================================
+@app.route('/api/admin/config', methods=['POST'])
+def api_admin_config():
+    """API 키 설정 및 저장"""
+    try:
+        data = request.json
+        api_keys = {
+            'OPENAI_API_KEY': data.get('openai_key'),
+            'GEMINI_API_KEY': data.get('gemini_key'),
+            'PERPLEXITY_API_KEY': data.get('perplexity_key')
+        }
+        
+        # 환경 변수 설정 (현재 프로세스)
+        updated_count = 0
+        for key, value in api_keys.items():
+            if value:
+                os.environ[key] = value
+                updated_count += 1
+        
+        return jsonify({'status': 'success', 'message': f'{updated_count} keys updated', 'keys': list(api_keys.keys())})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/admin/config', methods=['GET'])
+def get_admin_config():
+    """현재 설정된 키 상태 확인 (보안상 마스킹)"""
+    return jsonify({
+        'openai': bool(os.getenv('OPENAI_API_KEY')),
+        'gemini': bool(os.getenv('GEMINI_API_KEY')),
+        'perplexity': bool(os.getenv('PERPLEXITY_API_KEY'))
+    })
+
 
 # ============================================================
 # HEALTH CHECK & SYSTEM STATUS
@@ -764,23 +798,63 @@ def api_nice_experts():
     try:
         from datetime import datetime
         
-        # === 폴백 데이터 (즉시 사용) ===
+        # === 실시간 데이터 연동 (빗썸 API) ===
+        import requests as req
+        
+        # 기본값 (Fail-safe)
+        btc_price = 98000
+        btc_change_24h = 2.5
+        rsi_val = 60
+        fear_greed_val = 55
+        
+        try:
+            # 빗썸 BTC 시세 가져오기
+            bithumb_res = req.get('https://api.bithumb.com/public/ticker/BTC_KRW', timeout=3)
+            if bithumb_res.status_code == 200:
+                b_data = bithumb_res.json().get('data', {})
+                btc_price = float(b_data.get('closing_price', 98000))
+                opening_price = float(b_data.get('opening_price', 96000))
+                # 24시간 변동률 계산
+                btc_change_24h = ((btc_price - opening_price) / opening_price) * 100
+                
+                # 간단한 RSI 근사 계산 (최근 변동폭 이용)
+                # 실제로는 OHLC 데이터가 필요하지만, 변동률로 약식 추정
+                rsi_base = 50
+                rsi_val = min(99, max(1, rsi_base + (btc_change_24h * 5))) # 변동률 1%당 RSI 5점 변동 가정
+                
+                # 공포탐욕지수 추정 (변동상태 기반)
+                if btc_change_24h > 3: fear_greed_val = 75
+                elif btc_change_24h > 0: fear_greed_val = 60
+                elif btc_change_24h > -3: fear_greed_val = 40
+                else: fear_greed_val = 25
+        except Exception as e:
+            logger.error(f"Failed to fetch Bithumb data: {e}")
+
+        # === 동적 레이어 점수 계산 (실데이터 기반) ===
+        # L1: 기술적 - RSI 및 변동률 기반
+        l1_score = int(min(100, max(0, rsi_val + (btc_change_24h * 2))))
+        l1_status = '강세' if l1_score >= 70 else ('약세' if l1_score < 40 else '중립')
+        
+        # L3: 심리 - 공포탐욕지수 연동
+        l3_score = int(fear_greed_val)
+        
         layer_data = {
-            'layer1': {'score': 85, 'max': 100, 'rsi': 67, 'macd': 'up', 'volume_change': 145},
+            'layer1': {'score': l1_score, 'max': 100, 'rsi': int(rsi_val), 'macd': 'up' if btc_change_24h > 0 else 'down', 'volume_change': 145},
             'layer2': {'score': 26, 'max': 30, 'whale_inflow': 15, 'mvrv': 2.1},
-            'layer3': {'score': 55, 'max': 100, 'fear_greed': 55},
+            'layer3': {'score': l3_score, 'max': 100, 'fear_greed': fear_greed_val},
             'layer4': {'score': 36, 'max': 40, 'fed_rate': 4.25, 'cpi': 2.6, 'dxy': 102.5, 'vix': 18.5},
             'layer5': {'score': 29, 'max': 30, 'etf_inflow': 1800, 'etf_cumulative': 52}
         }
         
-        # 전문가 분석 (외부 호출 제거 - 즉시 생성)
+        # 전문가 분석 (시장 상황에 따라 동적 생성)
+        expert_signal = '매수' if btc_change_24h > 1 else ('매도' if btc_change_24h < -1 else '관망')
         expert_result = {
             'experts': [
-                {'name': 'Technical Analyst', 'signal': '매수 고려', 'action': 'RSI 상승 추세'},
+                {'name': 'Technical Analyst', 'signal': f'{expert_signal} 의견', 'action': f'RSI {int(rsi_val)}'},
                 {'name': 'Quant Model', 'signal': '중립', 'action': '변동성 관찰'},
-                {'name': 'Fund Manager', 'signal': '매수', 'action': '기관 매집 감지'}
+                {'name': 'Fund Manager', 'signal': '매수' if l1_score > 50 else '관망', 'action': '기관 매집 감지'}
             ],
-            'consensus': {'signal': '매수 고려', 'confidence': 68}
+            'consensus': {'signal': f'{expert_signal} 우세', 'confidence': 60 + abs(int(btc_change_24h * 5))}
         }
         
         # === 레이어 데이터 언패킹 ===
@@ -814,7 +888,7 @@ def api_nice_experts():
         elif l1['score'] >= 40:
             tech_status = "기술적 중립 구간"
         else:
-            tech_status = "기술적 약세 신호"
+            tech_status = "기술적 약세 신호 (하락 주의)"
         
         if l2['score'] >= 20:
             onchain_status = "고래 축적 패턴 감지"

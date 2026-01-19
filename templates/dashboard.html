@@ -583,6 +583,8 @@
                 <button class="tab-btn" data-tab="short">📈 단기 (30분~2시간)</button>
                 <button class="tab-btn" data-tab="medium">🔄 중기 (2시간~1일)</button>
                 <button class="tab-btn" data-tab="long">📊 장기 (1일~1주)</button>
+                <button class="tab-btn" data-tab="bithumb" style="border-color: #f7931a; color: #f7931a;">🇰🇷 빗썸
+                    리스트</button>
                 <button class="tab-btn" data-tab="surge">🚀 초 급등</button>
                 <button class="tab-btn" data-tab="report">📋 AI 리포트</button>
                 <button class="tab-btn" data-tab="analysis">🔍 시장 정밀 분석</button>
@@ -2791,6 +2793,141 @@
             document.getElementById('last-update').textContent = new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }) + ' 갱신';
         });
     </script>
+
+    <!-- API Key 설정 모달 -->
+    <div id="api-key-modal" class="modal-overlay" style="z-index: 9999;">
+        <div class="modal-content glass-card" style="max-width: 500px;">
+            <h3 class="text-xl font-bold mb-4 flex items-center gap-2">
+                🔑 API 키 설정 (필수)
+                <span class="text-xs text-red-400 font-normal">* Render 환경 변수 연동</span>
+            </h3>
+            <p class="text-sm text-gray-400 mb-6">
+                NICE 모델과 AI 분석을 실행하기 위해 API 키가 필요합니다.<br>
+                입력된 키는 서버 메모리에 임시 저장되거나 Render 환경 변수와 연동됩니다.
+            </p>
+
+            <div class="space-y-4">
+                <div>
+                    <label class="text-xs text-gray-400 mb-1 block">Perplexity API Key (실시간 시장 분석용)</label>
+                    <input type="password" id="input-perplexity-key" placeholder="pplx-..."
+                        class="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-white">
+                </div>
+                <div>
+                    <label class="text-xs text-gray-400 mb-1 block">OpenAI API Key (GPT 분석용)</label>
+                    <input type="password" id="input-openai-key" placeholder="sk-..."
+                        class="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-white">
+                </div>
+                <div>
+                    <label class="text-xs text-gray-400 mb-1 block">Gemini API Key (보조 분석용)</label>
+                    <input type="password" id="input-gemini-key" placeholder="AIza..."
+                        class="w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-white">
+                </div>
+            </div>
+
+            <div class="flex justify-end gap-2 mt-6">
+                <button onclick="document.getElementById('api-key-modal').classList.remove('active')"
+                    class="px-4 py-2 bg-gray-600 rounded text-gray-300 font-bold text-sm">닫기 (기능 제한)</button>
+                <button onclick="saveApiKeys()"
+                    class="px-6 py-2 bg-emerald-600 hover:bg-emerald-500 rounded text-white font-bold text-sm">설정 저장 및
+                    연결</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 빗썸 리스트 컨테이너 (동적 생성) -->
+    <template id="bithumb-list-template">
+        <div class="glass-card p-3">
+            <h3 class="font-bold text-lg mb-3 text-orange-400">🇰🇷 빗썸(Bithumb) 초단타 리스트</h3>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm text-left">
+                    <thead class="text-gray-400 text-xs uppercase bg-gray-800/50">
+                        <tr>
+                            <th class="px-2 py-2">코인명</th>
+                            <th class="px-2 py-2 text-right">현재가</th>
+                            <th class="px-2 py-2 text-right">변동률(24h)</th>
+                            <th class="px-2 py-2 text-right">거래량</th>
+                            <th class="px-2 py-2 text-center">NICE 점수</th>
+                        </tr>
+                    </thead>
+                    <tbody id="bithumb-table-body" class="divide-y divide-gray-700">
+                        <!-- JS로 채움 -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </template>
+
+    <script>
+        // API 키 확인 및 모달 제어
+        async function checkApiKeys() {
+            try {
+                const res = await fetch('/api/admin/config');
+                const keys = await res.json();
+
+                // 키가 하나라도 없으면 모달 띄움
+                if (!keys.perplexity && !keys.openai) {
+                    document.getElementById('api-key-modal').classList.add('active');
+                }
+            } catch (e) {
+                console.error('API Key check failed:', e);
+            }
+        }
+
+        async function saveApiKeys() {
+            const perplexity = document.getElementById('input-perplexity-key').value;
+            const openai = document.getElementById('input-openai-key').value;
+            const gemini = document.getElementById('input-gemini-key').value;
+
+            try {
+                const res = await fetch('/api/admin/config', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        perplexity_key: perplexity,
+                        openai_key: openai,
+                        gemini_key: gemini
+                    })
+                });
+
+                const result = await res.json();
+                if (result.status === 'success') {
+                    showToast('✅ API 키가 성공적으로 설정되었습니다.', 'success');
+                    document.getElementById('api-key-modal').classList.remove('active');
+                    // 페이지 새로고침하여 적용
+                    window.location.reload();
+                } else {
+                    showToast('❌ 설정 실패: ' + result.error, 'error');
+                }
+            } catch (e) {
+                showToast('❌ 통신 오류', 'error');
+            }
+        }
+
+        // 빗썸 탭 로직 추가
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                if (btn.dataset.tab === 'bithumb') {
+                    // 기존 로직(탭 활성화)은 common.js 등에 있을 수 있으므로 UI 처리만 추가
+                    // 실제 데이터 로드는 loadRankings 등이 수행
+                    document.getElementById('major-coins-list').parentElement.querySelector('h3').textContent = '🇰🇷 빗썸 메이저';
+                }
+            });
+        });
+
+        // 초기 실행 시 모달 체크
+        document.addEventListener('DOMContentLoaded', () => {
+            checkApiKeys();
+        });
+
+        // 키보드 단축키 (Ctrl+K)로 모달 열기
+        document.addEventListener('keydown', (e) => {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+                e.preventDefault();
+                document.getElementById('api-key-modal').classList.add('active');
+            }
+        });
+    </script>
 </body>
+
 
 </html>
