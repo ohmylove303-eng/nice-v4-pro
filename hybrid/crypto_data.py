@@ -165,9 +165,84 @@ class CryptoDataFetcher:
         return indices
     
     def fetch_top_coins(self, limit: int = 10) -> List[CoinData]:
-        """Top 코인 데이터"""
+        """Top 코인 데이터 (빗썸 API 우선, CoinGecko 폴백)"""
         coins = []
         
+        # 1. 빗썸 API 시도 (한국 원화 기반)
+        try:
+            url = "https://api.bithumb.com/public/ticker/ALL_KRW"
+            req = urllib.request.Request(url)
+            req.add_header('User-Agent', 'Mozilla/5.0')
+            
+            with urllib.request.urlopen(req, timeout=10) as response:
+                data = json.loads(response.read().decode())
+            
+            if data.get('status') == '0000':
+                bithumb_data = data.get('data', {})
+                
+                # 주요 코인 심볼 목록
+                major_coins = ['BTC', 'ETH', 'XRP', 'SOL', 'DOGE', 'ADA', 'AVAX', 'LINK', 'DOT', 'MATIC',
+                               'SHIB', 'PEPE', 'ARB', 'OP', 'APT', 'SUI', 'NEAR', 'ATOM', 'UNI', 'AAVE']
+                
+                coin_list = []
+                for symbol in major_coins:
+                    if symbol in bithumb_data and isinstance(bithumb_data[symbol], dict):
+                        coin_data = bithumb_data[symbol]
+                        
+                        closing_price = float(coin_data.get('closing_price', 0))
+                        opening_price = float(coin_data.get('opening_price', 1))
+                        volume = float(coin_data.get('units_traded_24H', 0))
+                        
+                        # 24시간 변동률 계산
+                        if opening_price > 0:
+                            change_24h = ((closing_price - opening_price) / opening_price) * 100
+                        else:
+                            change_24h = 0
+                        
+                        # NICE 점수 계산
+                        if change_24h > 10:
+                            score = 85
+                            signal = 'A'
+                            kelly = 4
+                        elif change_24h > 5:
+                            score = 75
+                            signal = 'A'
+                            kelly = 3
+                        elif change_24h > 0:
+                            score = 60
+                            signal = 'B'
+                            kelly = 2
+                        elif change_24h > -5:
+                            score = 45
+                            signal = 'B'
+                            kelly = 1
+                        else:
+                            score = 30
+                            signal = 'C'
+                            kelly = 0
+                        
+                        name_ko = next((c[1] for c in self.TOP_COINS if c[0] == symbol), symbol)
+                        
+                        coin_list.append(CoinData(
+                            symbol=symbol,
+                            name=name_ko,
+                            price=closing_price,
+                            change_24h=round(change_24h, 2),
+                            volume_24h=round(volume * closing_price / 1e9, 2),  # B 단위 (KRW)
+                            market_cap=0,  # 빗썸 API는 시총 제공 안함
+                            score=score,
+                            signal_type=signal,
+                            kelly=kelly
+                        ))
+                
+                # 변동률 순으로 정렬
+                coin_list.sort(key=lambda x: x.change_24h, reverse=True)
+                return coin_list[:limit]
+                
+        except Exception as e:
+            print(f"Bithumb API error: {e}")
+        
+        # 2. CoinGecko API 폴백
         try:
             url = f"https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page={limit}&page=1&sparkline=false"
             req = urllib.request.Request(url)
@@ -180,7 +255,6 @@ class CryptoDataFetcher:
                 symbol = item['symbol'].upper()
                 name_ko = next((c[1] for c in self.TOP_COINS if c[0] == symbol), item['name'])
                 
-                # NICE 점수 계산 (간단 버전)
                 change = item.get('price_change_percentage_24h', 0) or 0
                 if change > 5:
                     score = 80
@@ -204,22 +278,23 @@ class CryptoDataFetcher:
                     name=name_ko,
                     price=item['current_price'],
                     change_24h=round(change, 2),
-                    volume_24h=round((item.get('total_volume', 0) or 0) / 1e9, 2),  # B 단위
-                    market_cap=round((item.get('market_cap', 0) or 0) / 1e9, 1),  # B 단위
+                    volume_24h=round((item.get('total_volume', 0) or 0) / 1e9, 2),
+                    market_cap=round((item.get('market_cap', 0) or 0) / 1e9, 1),
                     score=score,
                     signal_type=signal,
                     kelly=kelly
                 ))
                 
         except Exception as e:
-            print(f"Top coins error: {e}")
-            # 기본 데이터
+            print(f"CoinGecko API error: {e}")
+            # 최소한의 폴백 데이터
             coins = [
                 CoinData('BTC', '비트코인', 96000, 1.5, 45.2, 1890, 75, 'A', 4),
                 CoinData('ETH', '이더리움', 3400, 0.8, 18.5, 410, 68, 'B', 2),
             ]
         
         return coins
+
     
     def fetch_etf_flows(self) -> ETFFlows:
         """ETF 유입/유출"""
