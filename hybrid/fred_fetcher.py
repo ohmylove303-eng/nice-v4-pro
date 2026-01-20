@@ -224,31 +224,42 @@ class FREDFetcher:
         return None
     
     def _fetch_dxy(self) -> Optional[Dict]:
-        """Yahoo Finance에서 DXY 가져오기"""
-        try:
-            import yfinance as yf
-            
-            dxy = yf.Ticker("DX-Y.NYB")
-            hist = dxy.history(period="5d")
-            
-            if not hist.empty and len(hist) >= 2:
-                current = float(hist['Close'].iloc[-1])
-                prev = float(hist['Close'].iloc[0])
-                change = (current - prev) / prev * 100
-                
-                if change > 0.5:
-                    trend = '강세'
-                elif change < -0.5:
-                    trend = '약세'
-                else:
-                    trend = '보통'
-                
-                return {'value': round(current, 1), 'trend': trend}
-        except Exception as e:
-            print(f"DXY fetch error: {e}")
+        """Yahoo Finance에서 DXY 가져오기 (타임아웃 개선)"""
+        import threading
         
-        # 기본값
-        return {'value': 102.5, 'trend': '보통'}
+        result = {'value': 102.5, 'trend': '보통'}  # 기본값
+        
+        def fetch():
+            nonlocal result
+            try:
+                import yfinance as yf
+                
+                dxy = yf.Ticker("DX-Y.NYB")
+                hist = dxy.history(period="5d")
+                
+                if not hist.empty and len(hist) >= 2:
+                    current = float(hist['Close'].iloc[-1])
+                    prev = float(hist['Close'].iloc[0])
+                    change = (current - prev) / prev * 100
+                    
+                    if change > 0.5:
+                        trend = '강세'
+                    elif change < -0.5:
+                        trend = '약세'
+                    else:
+                        trend = '보통'
+                    
+                    result = {'value': round(current, 1), 'trend': trend}
+            except Exception as e:
+                print(f"DXY fetch error: {e}")
+        
+        # 5초 타임아웃으로 스레드 실행
+        thread = threading.Thread(target=fetch)
+        thread.start()
+        thread.join(timeout=5)  # 최대 5초 대기
+        
+        return result
+
     
     def get_summary_ko(self) -> str:
         """초등학교 3학년 수준 요약"""
