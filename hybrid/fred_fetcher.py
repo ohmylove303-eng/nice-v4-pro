@@ -1,14 +1,15 @@
 """
-FRED Data Fetcher
-==================
+FRED Data Fetcher (Simplified - No yfinance dependency)
+=========================================================
 미국 연방준비은행(FRED) 매크로 데이터 수집
+Render 서버 안정성을 위해 yfinance 제거
 
 데이터 소스:
-- Fed 금리 (FEDFUNDS)
-- CPI 인플레이션 (CPIAUCSL)
-- 실업률 (UNRATE)
-- 10년물 국채 (DGS10)
-- DXY 달러 인덱스 (Yahoo Finance)
+- Fed 금리 (FEDFUNDS) - FRED API
+- CPI 인플레이션 (CPIAUCSL) - FRED API  
+- 실업률 (UNRATE) - FRED API
+- 10년물 국채 (DGS10) - FRED API
+- DXY 달러 인덱스 - 하드코딩 폴백 (외부 API 호출 제거)
 """
 
 import os
@@ -22,14 +23,14 @@ import json
 @dataclass
 class MacroData:
     """매크로 지표 데이터"""
-    fed_rate: Optional[float] = None          # Fed 금리
-    fed_rate_change: Optional[str] = None     # 동결/인상/인하
-    cpi_yoy: Optional[float] = None           # CPI 전년비
-    cpi_trend: Optional[str] = None           # 상승/안정/하락
-    unemployment: Optional[float] = None      # 실업률
-    treasury_10y: Optional[float] = None      # 10년물 국채
-    dxy: Optional[float] = None               # 달러 인덱스
-    dxy_trend: Optional[str] = None           # 강세/안정/약세
+    fed_rate: Optional[float] = None
+    fed_rate_change: Optional[str] = None
+    cpi_yoy: Optional[float] = None
+    cpi_trend: Optional[str] = None
+    unemployment: Optional[float] = None
+    treasury_10y: Optional[float] = None
+    dxy: Optional[float] = None
+    dxy_trend: Optional[str] = None
     timestamp: datetime = field(default_factory=datetime.now)
     
     def to_dict(self) -> Dict:
@@ -66,7 +67,6 @@ class MacroData:
         }
     
     def _explain_fed_rate(self) -> str:
-        """초등 3학년 수준 설명"""
         if self.fed_rate is None:
             return "정보를 가져오는 중이에요"
         if self.fed_rate_change == '인하':
@@ -119,16 +119,19 @@ class MacroData:
 
 class FREDFetcher:
     """
-    FRED 및 매크로 데이터 수집기
-    
-    사용법:
-    >>> fetcher = FREDFetcher()
-    >>> data = fetcher.fetch_all()
-    >>> print(data.to_dict())
+    FRED 매크로 데이터 수집기 (간소화 버전)
+    yfinance 의존성 제거, 모든 외부 호출에 타임아웃 및 폴백 적용
     """
     
-    # FRED API 키 (환경변수에서 가져옴)
     FRED_API_KEY = os.environ.get('FRED_API_KEY', '')
+    
+    # 기본값 (API 실패시 사용)
+    DEFAULTS = {
+        'FEDFUNDS': 4.25,
+        'CPIAUCSL': 2.6,
+        'UNRATE': 4.1,
+        'DGS10': 4.2
+    }
     
     def __init__(self):
         self._cache = {}
@@ -136,23 +139,26 @@ class FREDFetcher:
         self._cache_ttl = timedelta(hours=1)
     
     def fetch_all(self) -> MacroData:
-        """모든 매크로 데이터 수집"""
+        """모든 매크로 데이터 수집 (안전한 폴백 버전)"""
         # 캐시 확인
         if self._cache_time and datetime.now() - self._cache_time < self._cache_ttl:
-            return self._cache.get('data', MacroData())
+            cached = self._cache.get('data')
+            if cached:
+                return cached
         
         data = MacroData()
         
         # Fed Rate
         try:
             data.fed_rate = self._fetch_fred_series('FEDFUNDS')
-            data.fed_rate_change = '동결'  # 기본값, 실제로는 이전값과 비교 필요
-        except Exception as e:
-            print(f"Fed rate fetch error: {e}")
+            data.fed_rate_change = '동결'
+        except:
+            data.fed_rate = self.DEFAULTS['FEDFUNDS']
+            data.fed_rate_change = '동결'
         
         # CPI
         try:
-            data.cpi_yoy = self._fetch_fred_series('CPIAUCSL', yoy=True)
+            data.cpi_yoy = self._fetch_fred_series('CPIAUCSL')
             if data.cpi_yoy:
                 if data.cpi_yoy < 2.5:
                     data.cpi_trend = '안정'
@@ -160,29 +166,32 @@ class FREDFetcher:
                     data.cpi_trend = '상승'
                 else:
                     data.cpi_trend = '보통'
-        except Exception as e:
-            print(f"CPI fetch error: {e}")
+            else:
+                data.cpi_yoy = self.DEFAULTS['CPIAUCSL']
+                data.cpi_trend = '보통'
+        except:
+            data.cpi_yoy = self.DEFAULTS['CPIAUCSL']
+            data.cpi_trend = '보통'
         
         # Unemployment
         try:
             data.unemployment = self._fetch_fred_series('UNRATE')
-        except Exception as e:
-            print(f"Unemployment fetch error: {e}")
+            if not data.unemployment:
+                data.unemployment = self.DEFAULTS['UNRATE']
+        except:
+            data.unemployment = self.DEFAULTS['UNRATE']
         
         # 10Y Treasury
         try:
             data.treasury_10y = self._fetch_fred_series('DGS10')
-        except Exception as e:
-            print(f"Treasury fetch error: {e}")
+            if not data.treasury_10y:
+                data.treasury_10y = self.DEFAULTS['DGS10']
+        except:
+            data.treasury_10y = self.DEFAULTS['DGS10']
         
-        # DXY (Yahoo Finance)
-        try:
-            dxy_data = self._fetch_dxy()
-            if dxy_data:
-                data.dxy = dxy_data['value']
-                data.dxy_trend = dxy_data['trend']
-        except Exception as e:
-            print(f"DXY fetch error: {e}")
+        # DXY (하드코딩 - yfinance 제거)
+        data.dxy = 102.5
+        data.dxy_trend = '보통'
         
         # 캐시 업데이트
         self._cache['data'] = data
@@ -190,76 +199,28 @@ class FREDFetcher:
         
         return data
     
-    def _fetch_fred_series(self, series_id: str, yoy: bool = False) -> Optional[float]:
-        """FRED API에서 시계열 데이터 가져오기"""
+    def _fetch_fred_series(self, series_id: str) -> Optional[float]:
+        """FRED API에서 시계열 데이터 가져오기 (5초 타임아웃)"""
         if not self.FRED_API_KEY:
-            # FRED API 키 없으면 기본값 반환 (실제 환경에서는 키 필요)
-            defaults = {
-                'FEDFUNDS': 4.25,
-                'CPIAUCSL': 2.6,
-                'UNRATE': 4.1,
-                'DGS10': 4.2
-            }
-            return defaults.get(series_id)
+            return self.DEFAULTS.get(series_id)
         
         try:
-            url = f"https://api.stlouisfed.org/fred/series/observations?series_id={series_id}&api_key={self.FRED_API_KEY}&file_type=json&sort_order=desc&limit=2"
+            url = f"https://api.stlouisfed.org/fred/series/observations?series_id={series_id}&api_key={self.FRED_API_KEY}&file_type=json&sort_order=desc&limit=1"
             req = urllib.request.Request(url)
             req.add_header('User-Agent', 'Mozilla/5.0')
             
-            with urllib.request.urlopen(req, timeout=10) as response:
+            with urllib.request.urlopen(req, timeout=5) as response:
                 data = json.loads(response.read().decode())
                 
             observations = data.get('observations', [])
             if observations:
-                latest = float(observations[0]['value'])
-                
-                if yoy and len(observations) > 1:
-                    # 전년비 계산 (간략화)
-                    return round(latest, 2)
-                return round(latest, 2)
+                value = observations[0].get('value', '.')
+                if value != '.':
+                    return round(float(value), 2)
         except Exception as e:
             print(f"FRED API error for {series_id}: {e}")
         
-        return None
-    
-    def _fetch_dxy(self) -> Optional[Dict]:
-        """Yahoo Finance에서 DXY 가져오기 (타임아웃 개선)"""
-        import threading
-        
-        result = {'value': 102.5, 'trend': '보통'}  # 기본값
-        
-        def fetch():
-            nonlocal result
-            try:
-                import yfinance as yf
-                
-                dxy = yf.Ticker("DX-Y.NYB")
-                hist = dxy.history(period="5d")
-                
-                if not hist.empty and len(hist) >= 2:
-                    current = float(hist['Close'].iloc[-1])
-                    prev = float(hist['Close'].iloc[0])
-                    change = (current - prev) / prev * 100
-                    
-                    if change > 0.5:
-                        trend = '강세'
-                    elif change < -0.5:
-                        trend = '약세'
-                    else:
-                        trend = '보통'
-                    
-                    result = {'value': round(current, 1), 'trend': trend}
-            except Exception as e:
-                print(f"DXY fetch error: {e}")
-        
-        # 5초 타임아웃으로 스레드 실행
-        thread = threading.Thread(target=fetch)
-        thread.start()
-        thread.join(timeout=5)  # 최대 5초 대기
-        
-        return result
-
+        return self.DEFAULTS.get(series_id)
     
     def get_summary_ko(self) -> str:
         """초등학교 3학년 수준 요약"""
@@ -274,7 +235,7 @@ class FREDFetcher:
             data._explain_dxy(),
         ]
         
-        return "\n".join(lines)
+        return "\\n".join(lines)
 
 
 # 테스트용
@@ -282,9 +243,9 @@ if __name__ == '__main__':
     fetcher = FREDFetcher()
     data = fetcher.fetch_all()
     
-    print("=== FRED Data Test ===\n")
+    print("=== FRED Data Test ===\\n")
     print(fetcher.get_summary_ko())
-    print("\n=== Raw Data ===")
+    print("\\n=== Raw Data ===")
     for key, value in data.to_dict().items():
         if key != 'timestamp':
             print(f"{key}: {value}")
