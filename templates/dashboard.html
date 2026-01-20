@@ -2757,6 +2757,18 @@
                         // 시장 분석 탭 표시
                         document.getElementById('tab-analysis').classList.add('active');
                         MarketAnalysis.init();
+                    } else if (tabName === 'surge') {
+                        // 초급등 탭 - Super Surge 로드
+                        document.getElementById('dashboard-view').classList.add('active');
+                        loadSuperSurge();
+                        document.getElementById('major-sort-criteria').textContent = '급등률 → AI 분석';
+                    } else if (tabName === 'bithumb') {
+                        // 빗썸 탭 - scalp 모드로 빗썸 데이터 로드
+                        document.getElementById('dashboard-view').classList.add('active');
+                        currentTimeframe = 'scalp';
+                        loadRankings('scalp');  // 빗썸 API는 crypto_data.py에서 우선 처리됨
+                        document.getElementById('major-sort-criteria').textContent = '🇰🇷 빗썸 KRW 실시간';
+                        initTradingView(selectedCoin, 'scalp');
                     } else {
                         // 트레이딩 탭 (통합 뷰) 표시
                         document.getElementById('dashboard-view').classList.add('active');
