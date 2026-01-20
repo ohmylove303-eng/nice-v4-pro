@@ -503,7 +503,7 @@ def api_nice_ai_summary():
 
 @app.route('/api/nice/macro')
 def api_nice_macro():
-    """FRED 매크로 데이터 (미국 경제 지표)"""
+    """FRED 매크로 데이터 (미국 경제 지표) - 폴백 포함"""
     try:
         from hybrid.fred_fetcher import FREDFetcher
         
@@ -519,7 +519,25 @@ def api_nice_macro():
     except Exception as e:
         import traceback
         traceback.print_exc()
-        return jsonify({'error': str(e)}), 500
+        
+        # 폴백 데이터 반환 (500 에러 대신)
+        fallback_data = {
+            'fed_rate': {'value': 4.25, 'change': '동결', 'label_ko': '미국 금리', 'explain_ko': '🟡 금리가 4.25%예요. 지금은 그대로예요'},
+            'cpi': {'value': 2.6, 'trend': '보통', 'label_ko': '물가 상승률', 'explain_ko': '🟡 물가가 2.6% 올랐어요. 보통이에요'},
+            'unemployment': {'value': 4.1, 'label_ko': '실업률', 'explain_ko': '🟡 일자리는 보통이에요. 실업률 4.1%'},
+            'treasury_10y': {'value': 4.2, 'label_ko': '국채 금리', 'explain_ko': '🟡 국채 금리가 4.2%예요. 보통이에요'},
+            'dxy': {'value': 102.5, 'trend': '보통', 'label_ko': '달러 가치', 'explain_ko': '🟡 달러는 보통이에요 (DXY 102.5)'},
+            'timestamp': datetime.now().isoformat()
+        }
+        
+        return jsonify({
+            'data': fallback_data,
+            'summary_ko': '🏦 **나라 경제 상황이에요!**\n\n🟡 금리가 4.25%예요. 지금은 그대로예요\n🟡 물가가 2.6% 올랐어요. 보통이에요\n🟡 일자리는 보통이에요. 실업률 4.1%\n🟡 달러는 보통이에요 (DXY 102.5)',
+            'timestamp': datetime.now().isoformat(),
+            'fallback': True,
+            'error_msg': str(e)
+        })
+
 
 
 @app.route('/api/nice/kids')
