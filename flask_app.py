@@ -57,44 +57,11 @@ def load_bithumb_coins():
 # Cache the coin list
 BITHUMB_COINS = load_bithumb_coins()
 
-# ============================================================
-# ADMIN CONFIG API (API KEY SETUP)
-# ============================================================
-@app.route('/api/admin/config', methods=['POST'])
-def api_admin_config():
-    """API 키 설정 및 저장"""
-    try:
-        data = request.json
-        api_keys = {
-            'OPENAI_API_KEY': data.get('openai_key'),
-            'GEMINI_API_KEY': data.get('gemini_key'),
-            'PERPLEXITY_API_KEY': data.get('perplexity_key')
-        }
-        
-        # 환경 변수 설정 (현재 프로세스)
-        updated_count = 0
-        for key, value in api_keys.items():
-            if value:
-                os.environ[key] = value
-                updated_count += 1
-        
-        return jsonify({'status': 'success', 'message': f'{updated_count} keys updated', 'keys': list(api_keys.keys())})
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-@app.route('/api/admin/config', methods=['GET'])
-def get_admin_config():
-    """현재 설정된 키 상태 확인 (보안상 마스킹)"""
-    return jsonify({
-        'openai': bool(os.getenv('OPENAI_API_KEY')),
-        'gemini': bool(os.getenv('GEMINI_API_KEY')),
-        'perplexity': bool(os.getenv('PERPLEXITY_API_KEY'))
-    })
-
 
 # ============================================================
 # HEALTH CHECK & SYSTEM STATUS
 # ============================================================
+
 
 @app.route('/api/health')
 def api_health():
