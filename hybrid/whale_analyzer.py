@@ -225,32 +225,63 @@ class WhaleAnalyzer:
             sentiment=sentiment
         )
     
-    def analyze_fractal(self, symbol: str, price: float) -> FractalPattern:
+    def analyze_fractal(self, symbol: str, price: float, change_24h: float = 0, high_24h: float = 0, low_24h: float = 0) -> FractalPattern:
         """
-        프렉탈 패턴 분석
-        고점/저점 구조 확인
+        프렉탈 패턴 분석 (실제 데이터 기반)
+        고점/저점 및 변동률 기반 추세 파악
         """
-        # 시뮬레이션 (실제로는 가격 데이터 분석 필요)
-        patterns = [
-            ('higher_high', 'bullish'),
-            ('higher_low', 'bullish'),
-            ('lower_high', 'bearish'),
-            ('lower_low', 'bearish'),
-            ('double_top', 'bearish'),
-            ('double_bottom', 'bullish'),
-            ('ascending_triangle', 'bullish'),
-            ('descending_triangle', 'bearish')
-        ]
+        # 기본값 처리
+        if high_24h == 0: high_24h = price * 1.02
+        if low_24h == 0: low_24h = price * 0.98
+
+        # 1. 패턴 및 강도 결정 (변동률 기반)
+        if change_24h > 5.0:
+            pattern_type = 'super_surge'
+            direction = 'bullish'
+            strength = 90 + min(10, change_24h - 5)
+        elif change_24h > 2.0:
+            pattern_type = 'rising_wedge'
+            direction = 'bullish'
+            strength = 75 + (change_24h * 2)
+        elif change_24h < -5.0:
+            pattern_type = 'deep_correction'
+            direction = 'bearish'
+            strength = 85 + min(15, abs(change_24h) - 5)
+        elif change_24h < -2.0:
+            pattern_type = 'descending_channel'
+            direction = 'bearish'
+            strength = 70 + (abs(change_24h) * 2)
+        else:
+            # 횡보장
+            dist_to_high = (high_24h - price) / price
+            dist_to_low = (price - low_24h) / price
+            
+            if dist_to_high < dist_to_low:
+                 pattern_type = 'testing_resistance'
+                 direction = 'neutral'
+                 strength = 50 + (1 - dist_to_high*100)*5
+            else:
+                 pattern_type = 'testing_support'
+                 direction = 'neutral'
+                 strength = 50 + (1 - dist_to_low*100)*5
         
-        # 결정적: 심볼 기반 패턴 선택
-        h = _det_hash(symbol, 'fractal')
-        pattern_type, direction = patterns[h % len(patterns)]
-        strength = 55 + (h % 400) / 10  # 55-95
+        strength = min(99, max(1, strength))
+
+        # 2. 지지/저항 레벨 (실제 High/Low 기반)
+        # 피보나치 비율 활용
+        range_val = high_24h - low_24h
         
-        # 지지/저항 레벨 계산 - 결정적
-        support = price * (1 - 0.02 - (h % 30) / 1000)  # -2% to -5%
-        resistance = price * (1 + 0.02 + (h % 30) / 1000)  # +2% to +5%
-        
+        # 현재 추세에 따라 주요 레벨 설정
+        if direction == 'bullish':
+            support = price * 0.98  # 단기 지지
+            resistance = high_24h   # 1차 저항 (전고점)
+        elif direction == 'bearish':
+            support = low_24h       # 1차 지지 (전저점)
+            resistance = price * 1.02 # 단기 저항
+        else:
+            support = low_24h
+            resistance = high_24h
+
         return FractalPattern(
             pattern_type=pattern_type,
             strength=round(strength, 1),
@@ -258,7 +289,7 @@ class WhaleAnalyzer:
             key_levels={
                 'support': round(support, 2),
                 'resistance': round(resistance, 2),
-                'pivot': round(price, 2)
+                'pivot': round((high_24h + low_24h + price) / 3, 2)
             }
         )
     
@@ -335,7 +366,12 @@ class WhaleAnalyzer:
         
         # 분석 수행
         whale_position = self.analyze_whale_position(symbol, price)
-        fractal = self.analyze_fractal(symbol, price)
+        
+        # Real-time data usage for fractal analysis
+        high_24h = kwargs.get('high_24h', 0)
+        low_24h = kwargs.get('low_24h', 0)
+        fractal = self.analyze_fractal(symbol, price, change_24h, high_24h, low_24h)
+        
         nice_score, nice_type = self.calculate_nice_score(symbol, change_24h, volume_ratio)
         
         # 거래 추천 계산

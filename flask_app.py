@@ -799,6 +799,11 @@ def api_nice_experts():
                 b_data = bithumb_res.json().get('data', {})
                 btc_price = float(b_data.get('closing_price', 98000))
                 opening_price = float(b_data.get('opening_price', 96000))
+                
+                # Fetch High/Low for Technical Analysis
+                btc_high_24h = float(b_data.get('max_price', btc_price * 1.02))
+                btc_low_24h = float(b_data.get('min_price', btc_price * 0.98))
+                
                 btc_change_24h = ((btc_price - opening_price) / opening_price) * 100
                 
                 # RSI 근사 계산
@@ -2103,7 +2108,7 @@ def api_crypto_technical(symbol: str):
     
     try:
         # Fetch 7-day OHLC data from CoinGecko
-        ohlc_url = f"https://api.coingecko.com/api/v3/coins/{coin_id}/ohlc?vs_currency=usd&days=7"
+        ohlc_url = f"https://api.coingecko.com/api/v3/coins/{coin_id}/ohlc?vs_currency=krw&days=7"
         with urllib.request.urlopen(ohlc_url, timeout=10) as resp:
             ohlc_data = json.loads(resp.read().decode())
         
@@ -2142,30 +2147,41 @@ def api_crypto_technical(symbol: str):
             week_open = all_7d_candles[0][1]
             week_close = all_7d_candles[-1][4]
             weekly_change = ((week_close - week_open) / week_open * 100) if week_open > 0 else 0
-            
-            # Determine trend based on 7-day movement
-            if weekly_change >= 15:
-                trend_direction = 'strong_bull'
-                elliott_wave = 3  # Major impulse wave
-            elif weekly_change >= 5:
-                trend_direction = 'bull'
-                elliott_wave = 5  # Final impulse wave
-            elif weekly_change >= 0:
-                trend_direction = 'neutral_up'
-                elliott_wave = 1  # Starting wave
-            elif weekly_change >= -5:
-                trend_direction = 'neutral_down'
-                elliott_wave = 2  # Corrective wave
-            elif weekly_change >= -15:
-                trend_direction = 'bear'
-                elliott_wave = 4  # Corrective wave
-            else:
-                trend_direction = 'strong_bear'
-                elliott_wave = 4  # Deep correction
         else:
-            trend_direction = 'unknown'
             weekly_change = 0
+
+        # === Use WhaleAnalyzer for Fractal/Wave Analysis with REAL 24h data ===
+        from hybrid.whale_analyzer import WhaleAnalyzer
+        analyzer = WhaleAnalyzer()
+        
+        # Pass 24h data to fractal analyzer (ensure real-time relevance)
+        fractal = analyzer.analyze_fractal(symbol, current_price, change_from_midnight, high_24h, low_24h)
+        
+        # Map Dynamic Pattern to Elliott Wave (Improved)
+        if fractal.pattern_type == 'super_surge':
+            elliott_wave = 3
+            trend_direction = 'strong_bull'
+            wave_desc = "Wave 3 강력 상승 (Impulse)"
+        elif fractal.pattern_type == 'rising_wedge':
+            elliott_wave = 5
+            trend_direction = 'bull'
+            wave_desc = "Wave 5 상승 (Ending)"
+        elif fractal.pattern_type == 'deep_correction':
+            elliott_wave = 'C'
+            trend_direction = 'strong_bear'
+            wave_desc = "Wave C 조정 (Correction)"
+        elif fractal.pattern_type == 'descending_channel':
+            elliott_wave = 4
+            trend_direction = 'bear'
+            wave_desc = "Wave 4 조정 (Pullback)"
+        elif fractal.direction == 'bullish': # General bullish
             elliott_wave = 1
+            trend_direction = 'bull_start'
+            wave_desc = "Wave 1 상승 시작 (Start)"
+        else: # Neutral or slight bear
+            elliott_wave = 2
+            trend_direction = 'correction'
+            wave_desc = "Wave 2 눌림목 (Base)"
         
         # Calculate Fibonacci levels based on real 24h range
         fib_range = high_24h - low_24h
@@ -2216,10 +2232,11 @@ def api_crypto_technical(symbol: str):
             'trend_direction': trend_direction,
             
             # Elliott Wave estimation (approximate)
+            # Elliott Wave (Dynamic from WhaleAnalyzer)
             'elliott': {
                 'wave': elliott_wave,
-                'description': f"Wave {elliott_wave} {'상승' if elliott_wave in [1,3,5] else '조정'}",
-                'confidence': 'approximate'  # Clear labeling
+                'description': wave_desc,
+                'confidence': f"{fractal.strength}/100"
             },
             
             # Fibonacci levels (real data)
@@ -2231,7 +2248,7 @@ def api_crypto_technical(symbol: str):
             'resistance': round(resistance, 8),
             'trend_strength': round(trend_strength, 0),
             
-            'source': 'CoinGecko OHLC',
+            'source': 'CoinGecko KRW OHLC',
             'timestamp': datetime.now().isoformat()
         }
         
