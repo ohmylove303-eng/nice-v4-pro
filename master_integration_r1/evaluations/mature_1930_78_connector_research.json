@@ -1,0 +1,80 @@
+{
+  "schema": "MASTER_R1_MATURE_1930_78_SUBSET_INDEPENDENT_REREAD",
+  "audited_at_utc": "2026-10-11T11:24:42.466Z",
+  "original_run_id": "MASTER_INTEGRATION_r1_20261011_1930KST",
+  "frozen_universe_sha256": "c70d3e6969a1fedb69c169e9655a765e3655ba21a1b2c4add70109c0cd682709",
+  "maturity": "2026-10-11T20:00:00+09:00",
+  "scope": "78 Binance spot USDT subset; not project/Bithumb KRW full universe",
+  "complete_connector_structured_evaluation": true,
+  "hashes_git_blobs": [
+    {
+      "group": 1,
+      "git_blob_sha1": "d7af0739c5939ca5fd9fd280a12b8bb41b2c51b7",
+      "url": "https://github.com/ohmylove303-eng/nice-v4-pro/blob/audit/master-r1-capture-20261011/master_integration_r1/captures/19h_full1h_group_1_of_6.json",
+      "records": 13
+    },
+    {
+      "group": 2,
+      "git_blob_sha1": "ffcfe4b3bdf56cf1e123cbf0c20f13c22e4875fd",
+      "url": "https://github.com/ohmylove303-eng/nice-v4-pro/blob/audit/master-r1-capture-20261011/master_integration_r1/captures/19h_full1h_group_2_of_6.json",
+      "records": 13
+    },
+    {
+      "group": 3,
+      "git_blob_sha1": "c7784de7a76dc6bc8665ca972f576664777427bd",
+      "url": "https://github.com/ohmylove303-eng/nice-v4-pro/blob/audit/master-r1-capture-20261011/master_integration_r1/captures/19h_full1h_group_3_of_6.json",
+      "records": 13
+    },
+    {
+      "group": 4,
+      "git_blob_sha1": "e9b0c419bea2cb287504c5d430b7f2d509d5d9f0",
+      "url": "https://github.com/ohmylove303-eng/nice-v4-pro/blob/audit/master-r1-capture-20261011/master_integration_r1/captures/19h_full1h_group_4_of_6.json",
+      "records": 13
+    },
+    {
+      "group": 5,
+      "git_blob_sha1": "4554ef7e5cad0215d4e30f88012430195cf94e43",
+      "url": "https://github.com/ohmylove303-eng/nice-v4-pro/blob/audit/master-r1-capture-20261011/master_integration_r1/captures/19h_full1h_group_5_of_6.json",
+      "records": 13
+    },
+    {
+      "group": 6,
+      "git_blob_sha1": "759230138a9cddea03c61810ccef06e2ba8f8c1d",
+      "url": "https://github.com/ohmylove303-eng/nice-v4-pro/blob/audit/master-r1-capture-20261011/master_integration_r1/captures/19h_full1h_group_6_of_6.json",
+      "records": 13
+    }
+  ],
+  "errors": [],
+  "source_limitation": "Historical re-query, exact connector structured payload archived in GitHub; not original native HTTP/WS transport",
+  "deterministic_exact_threshold_bigint": true,
+  "observed_winner_ge2": [
+    {
+      "symbol": "SENTUSDT",
+      "one_hour_return_pct": "3.081877"
+    },
+    {
+      "symbol": "CHIPUSDT",
+      "one_hour_return_pct": "4.289711"
+    }
+  ],
+  "winner_count": 2,
+  "champion_v82_3of3": [],
+  "observed_original_issue_candidates_research_only": [
+    "QNTUSDT",
+    "STRKUSDT",
+    "CHIPUSDT"
+  ],
+  "candidate_count_strict": null,
+  "research_intersection": [
+    "CHIPUSDT"
+  ],
+  "research_recall": "1/2",
+  "research_precision_from_reported_three": "1/3",
+  "strict_recall": "NOT_COMPUTABLE",
+  "strict_prospective_increment": 0,
+  "after_cost_ev": "NOT_COMPUTABLE",
+  "actual_fills": null,
+  "project_membership_coverage": "UNKNOWN",
+  "promotion": "NO_PROMOTION_NO_SCALE",
+  "new_signal_issued": false
+}
