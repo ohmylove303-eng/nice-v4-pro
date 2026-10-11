@@ -41,11 +41,12 @@ jobs:
         run: |
           p=$(find evidence -path '*/manifest.json' -name manifest.json | grep BITHUMB | head -n1)
           if [ -n "$p" ]; then python master_integration_r1/capture_native.py --mode verify-manifest --manifest "$p"; else echo 'BLOCKED_NO_BITHUMB_MANIFEST'; exit 2; fi
-      - name: Binance fully matured 19h 78-subset native public bytes; replay only
+      - name: Binance market-data-only official endpoint 78 native bytes; replay only
         continue-on-error: true
         run: >-
           python master_integration_r1/capture_native.py
           --mode binance-mature
+          --binance-base https://data-api.binance.vision
           --prefreeze master_integration_r1/r0_prefreeze_20261011_1930KST.json
           --start-ms 1791709200000
           --run-id BINANCE_${{ github.run_id }}_${{ github.run_attempt }}
