@@ -2,6 +2,8 @@
 
 **Status: PATCH TESTED OFFLINE; external native HTTP runner outcome must be verified separately.**
 
+Two officially documented Binance API hosts have distinct meanings: api.binance.com (initial attempt returned non-200 from GitHub runner) and data-api.binance.vision (Binance's dedicated no-auth public market-data host, second-attempt experiment). HTTP error response bodies and HTTP statuses must be retained; the presence of a file is not success. The Binance base is explicitly saved in the assessment. Native Bithumb 4/4 raw responses have been observed once, but ticker timestamp staleness blocked the freshness gate. This is not a profit estimate.
+
 This is an evidence-only collector and **matured-outcome evaluator input layer**, not a trading bot. It does not retrospectively issue r0/v8.2 signals or generate actual fill statements. Frozen r0/v8.2 thresholds remain unchanged. No orders, leverage, asset transfer, credential, or authenticated API endpoint.
 
 ## Concrete defect fixed
