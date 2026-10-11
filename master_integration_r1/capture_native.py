@@ -24,7 +24,8 @@ from zoneinfo import ZoneInfo
 KST = ZoneInfo("Asia/Seoul")
 BITHUMB = "https://api.bithumb.com"
 BINANCE = "https://api.binance.com"
-ALLOWED_HOSTS = frozenset({"api.bithumb.com", "api.binance.com"})
+BINANCE_MARKET_DATA = "https://data-api.binance.vision"
+ALLOWED_HOSTS = frozenset({"api.bithumb.com", "api.binance.com", "data-api.binance.vision"})
 MAX_BYTES = 2_000_000
 D = Decimal
 
@@ -245,7 +246,9 @@ def capture_bithumb(directory, market, opener):
     return captures, trio, available
 
 
-def capture_binance_78(directory, prefreeze_file, start_ms, opener):
+def capture_binance_78(directory, prefreeze_file, start_ms, opener, base=BINANCE_MARKET_DATA):
+    if base not in (BINANCE, BINANCE_MARKET_DATA):
+        raise ValueError("Official spot public market-data endpoints only")
     pre = json.loads(Path(prefreeze_file).read_text(encoding="utf-8"))
     bases = pre["universe"]
     if not isinstance(bases, list) or len(bases) != 78 or len(set(bases)) != 78:
@@ -256,16 +259,16 @@ def capture_binance_78(directory, prefreeze_file, start_ms, opener):
     if start_ms % 3600000 != 0:
         raise ValueError("Expected exact 1h UTC bar start")
     result = []
-    for base in bases:
-        symbol = base + "USDT"
-        info = capture_request(BINANCE, "/api/v3/klines", {"symbol": symbol, "interval": "1h", "startTime": start_ms, "endTime": start_ms+7200000-1, "limit": 2}, "binance_" + symbol, directory, opener)
+    for basename in bases:
+        symbol = basename + "USDT"
+        info = capture_request(base, "/api/v3/klines", {"symbol": symbol, "interval": "1h", "startTime": start_ms, "endTime": start_ms+7200000-1, "limit": 2}, "binance_" + symbol, directory, opener)
         if info["capture_status"] == "EXECUTED_STRUCTURED_RAW_FILE_VERIFIED" and validate_1h_klines(info["parsed"], start_ms, info["received_at_utc"]):
             info["data_validation"] = "TWO_COMPLETED_SPOT_1H_CONFIRMED"
         else:
             info["data_validation"] = "BLOCKED_NO_COVERAGE_CREDIT"
         result.append(info)
     ok = sum(x["data_validation"] == "TWO_COMPLETED_SPOT_1H_CONFIRMED" for x in result)
-    return result, {"scope": "Binance frozen 78 comparison subset only", "universe_sha256": h, "expected": 78, "captured_and_valid": ok, "status": "VERIFIED_COMPLETE_STRUCTURED_RAW" if ok == 78 else "BLOCKED_PARTIAL_NOT_ZERO"}
+    return result, {"scope": "Binance frozen 78 comparison subset only", "requested_source_base": base, "universe_sha256": h, "expected": 78, "captured_and_valid": ok, "status": "VERIFIED_COMPLETE_STRUCTURED_RAW" if ok == 78 else "BLOCKED_PARTIAL_NOT_ZERO"}
 
 
 def summarize_capture(info):
@@ -281,6 +284,7 @@ def main(argv=None, opener=urllib.request.urlopen):
     parser.add_argument("--market", default="KRW-BTC")
     parser.add_argument("--prefreeze")
     parser.add_argument("--start-ms", type=int)
+    parser.add_argument("--binance-base", choices=(BINANCE, BINANCE_MARKET_DATA), default=BINANCE_MARKET_DATA)
     parser.add_argument("--manifest")
     args = parser.parse_args(argv)
     if args.mode == "verify-manifest":
@@ -308,7 +312,7 @@ def main(argv=None, opener=urllib.request.urlopen):
     else:
         if not args.prefreeze or args.start_ms is None:
             parser.error("--prefreeze and --start-ms required")
-        captures, additional = capture_binance_78(directory, args.prefreeze, args.start_ms, opener)
+        captures, additional = capture_binance_78(directory, args.prefreeze, args.start_ms, opener, base=args.binance_base)
     # Prospective signal credit ALWAYS ZERO: no issue/persisted_at/delivery_ack proof.
     doc = {"schema": "MASTER_INTEGRATION_R1_NATIVE_HTTP_CAPTURE_V1", "run_id": args.run_id, "mode": args.mode, "run_started_at_utc": start, "run_completed_at_utc": utc_now(), "run_completed_at_kst": kst_now(), "sources": [summarize_capture(c) for c in captures], "assessment": additional, "native_http_body_write_once": True, "source_hash_algorithm": "sha256", "strict_prospective_credit_increment": 0, "issued_signals": 0, "after_cost_ev": "NOT_COMPUTABLE", "realized_pnl": None, "auto_order": False, "fund_transfer": False, "leverage": False, "project_membership_inventory": "UNKNOWN"}
     manifest = directory / "manifest.json"
