@@ -184,5 +184,17 @@ class CaptureTests(unittest.TestCase):
                 c.valid_run_id(name)
 
 
+    def test_binance_official_public_data_only_hostname(self):
+        from urllib.parse import urlparse
+        self.assertEqual(urlparse(c.BINANCE_MARKET_DATA).hostname, "data-api.binance.vision")
+        self.assertIn("data-api.binance.vision", c.ALLOWED_HOSTS)
+        self.assertNotIn("evil.example", c.ALLOWED_HOSTS)
+
+    def test_binance_rejects_unapproved_data_base(self):
+        with tempfile.TemporaryDirectory() as td:
+            with self.assertRaises(ValueError):
+                c.capture_binance_78(Path(td), "unused", 0, None, base="https://example.org")
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
