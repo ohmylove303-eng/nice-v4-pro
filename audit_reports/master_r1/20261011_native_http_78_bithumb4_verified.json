@@ -1,0 +1,82 @@
+{
+  "active_trade_execution": false,
+  "actual_orders": 0,
+  "after_cost_EV": "NOT_COMPUTABLE",
+  "artifact_digest_match": true,
+  "binance": {
+    "champion_3of3": [],
+    "frozen_universe_count": 78,
+    "full_frozen_rule_hash": "a76125e23167941b62861e332e609fe6b8a770f97ed66719fa195d7b28320f06",
+    "full_frozen_universe_hash": "c70d3e6969a1fedb69c169e9655a765e3655ba21a1b2c4add70109c0cd682709",
+    "http_200_and_sha256_verified": 78,
+    "maturity_cohort_kst": "2026-10-11 19:00:00~20:00:00 KST",
+    "original_1930_issue_candidates": [
+      "QNTUSDT",
+      "STRKUSDT",
+      "CHIPUSDT"
+    ],
+    "original_issue_delivery_ack": null,
+    "research_precision_fraction": "1/3",
+    "research_winner_recall_fraction": "1/2",
+    "source_host": "data-api.binance.vision",
+    "source_kind": "native HTTPS HTTP body bytes saved by GitHub hosted runner",
+    "strict_prospective_increment": 0,
+    "strict_prospective_recall": "NOT_COMPUTABLE",
+    "v82_count": 0,
+    "winner_count": 2,
+    "winners_2pct": [
+      {
+        "one_hour_pct": "3.08187672",
+        "quote_volume_ratio": "0.7214764536907223623658653686",
+        "spot_taker_pct": "63.93670265117725306749976089",
+        "symbol": "SENTUSDT",
+        "v82_3of3": false,
+        "winner": true
+      },
+      {
+        "one_hour_pct": "4.28971091",
+        "quote_volume_ratio": "2.280086548259506009657300827",
+        "spot_taker_pct": "52.46317789351392545948529452",
+        "symbol": "CHIPUSDT",
+        "v82_3of3": false,
+        "winner": true
+      }
+    ]
+  },
+  "bithumb": {
+    "KRW_CHIP_at_snapshot": true,
+    "KRW_SENT_at_snapshot": true,
+    "after_cost_EV": "NOT_COMPUTABLE",
+    "fills": null,
+    "http_200_and_sha256_verified": 4,
+    "krw_markets_count": 487,
+    "market_all_count": 500,
+    "orderbook_reported_timestamp_ms": 1791718814092,
+    "run_id": "BITHUMB_38136398211_1",
+    "source_kind": "native HTTPS HTTP body bytes saved by GitHub hosted runner",
+    "ticker_and_latest_trade_price_identical": true,
+    "ticker_date_utc": "20261011",
+    "ticker_minus_latest_trade_timestamp_ms": 32400000,
+    "ticker_received_at_utc": "2026-10-11T11:40:12.946+00:00",
+    "ticker_reported_timestamp_ms": 1791751212201,
+    "ticker_time_utc": "114012",
+    "ticker_timestamp_status": "CONTRADICTED_SOURCE_OFFSET",
+    "trade_reported_timestamp_ms": 1791718812201,
+    "trade_timestamp_corresponding_date_utc": "20261011",
+    "trade_timestamp_corresponding_time_utc": "114012"
+  },
+  "coverage_project": "UNKNOWN_PARTIAL",
+  "github_actions_run_id": 38136398211,
+  "github_actions_url": "https://github.com/ohmylove303-eng/nice-v4-pro/actions/runs/38136398211",
+  "github_artifact_sha256": "a8d1e46bb241c3f71d80861fca04c4376d8cb5f97252b58fee42668532c01256",
+  "portfolio_risk_adjusted_EV": "NOT_COMPUTABLE",
+  "promotion": "NO_PROMOTION_NO_SCALE",
+  "run_id": "AUDIT_NATIVE_20261011_2040KST",
+  "schema": "MASTER_INTEGRATION_R1_NATIVE_HTTP_EVIDENCE_V1",
+  "scope_limitations": [
+    "Bithumb market/all snapshot is current-run only; no historical 19h Bithumb universe membership",
+    "Native 78 complete 1h replay after maturity is research only, not 19:30 prospective issuance",
+    "No fill, fee, depth simulation or matched risk basket evaluated"
+  ],
+  "source_zip_sha256": "a8d1e46bb241c3f71d80861fca04c4376d8cb5f97252b58fee42668532c01256"
+}
