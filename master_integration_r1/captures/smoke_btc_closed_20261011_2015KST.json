@@ -1,0 +1,52 @@
+{
+  "schema": "MASTER_INTEGRATION_r1_CONNECTOR_STRUCTURED_CAPTURE_v1",
+  "symbol": "BTCUSDT",
+  "interval": "15m",
+  "request": {
+    "symbol": "BTCUSDT",
+    "interval": "15m",
+    "startTime": 1791715500000,
+    "endTime": 1791717299999,
+    "limit": 2
+  },
+  "source_tool": "mcp__Binance__get_spot_kline_candlestick_data",
+  "source_kind": "connector_structuredContent.result_NOT_native_HTTP_or_WS_bytes",
+  "started_at_toolcall": "2026-10-11T11:19:36.978Z",
+  "received_at_toolreturn": "2026-10-11T11:19:37.931Z",
+  "cut_exchange_ms": 1791717300000,
+  "completed_bars_only": true,
+  "raw_connector_structure": {
+    "result": [
+      [
+        1791715500000,
+        "82976.06000000",
+        "83017.25000000",
+        "82975.37000000",
+        "82991.71000000",
+        "144.78931000",
+        1791716399999,
+        "12017426.61666820",
+        8645,
+        "37.10774000",
+        "3079934.91175810",
+        "0"
+      ],
+      [
+        1791716400000,
+        "82991.70000000",
+        "83040.01000000",
+        "82991.70000000",
+        "83012.29000000",
+        "30.07599000",
+        1791717299999,
+        "2497000.97446020",
+        6703,
+        "18.23503000",
+        "1513839.94358770",
+        "0"
+      ]
+    ]
+  },
+  "raw_http_response_bytes": null,
+  "strict_prospective_credit": 0
+}
