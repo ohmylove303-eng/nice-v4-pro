@@ -1,0 +1,65 @@
+{
+  "schema": "MASTER_INTEGRATION_r1_CONNECTOR_STRUCTURED_CAPTURE_v1",
+  "purpose": "transport_bridge_smoke; never retroactive signal or prospective credit",
+  "source_tool": "mcp__Binance__get_spot_kline_candlestick_data",
+  "source_kind": "connector_structuredContent.result_NOT_native_HTTP_or_WS_bytes",
+  "symbol": "BTCUSDT",
+  "interval": "15m",
+  "request": {
+    "symbol": "BTCUSDT",
+    "interval": "15m",
+    "limit": 3
+  },
+  "started_at_toolcall": "2026-10-11T11:18:53.308Z",
+  "received_at_toolreturn": "2026-10-11T11:18:53.954Z",
+  "raw_connector_structure": {
+    "result": [
+      [
+        1791715500000,
+        "82976.06000000",
+        "83017.25000000",
+        "82975.37000000",
+        "82991.71000000",
+        "144.78931000",
+        1791716399999,
+        "12017426.61666820",
+        8645,
+        "37.10774000",
+        "3079934.91175810",
+        "0"
+      ],
+      [
+        1791716400000,
+        "82991.70000000",
+        "83040.01000000",
+        "82991.70000000",
+        "83012.29000000",
+        "30.07599000",
+        1791717299999,
+        "2497000.97446020",
+        6703,
+        "18.23503000",
+        "1513839.94358770",
+        "0"
+      ],
+      [
+        1791717300000,
+        "83012.30000000",
+        "83028.00000000",
+        "83008.06000000",
+        "83028.00000000",
+        "10.13520000",
+        1791718199999,
+        "841356.70096790",
+        1347,
+        "4.76773000",
+        "395794.74314820",
+        "0"
+      ]
+    ]
+  },
+  "raw_http_response_bytes": null,
+  "github_commit_persisted_at": "LOOKUP_COMMIT_METADATA_SEPARATELY",
+  "strict_prospective_cohort_credit_increment": 0,
+  "orders": 0
+}

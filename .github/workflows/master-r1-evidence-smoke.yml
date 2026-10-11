@@ -1,0 +1,67 @@
+name: Master r1 evidence-only raw capture smoke
+
+on:
+  push:
+    branches:
+      - audit/master-r1-capture-20261011
+    paths:
+      - 'master_integration_r1/**'
+      - '.github/workflows/master-r1-evidence-smoke.yml'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'master_integration_r1/**'
+      - '.github/workflows/master-r1-evidence-smoke.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  native-readonly-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Contract tests (mock only)
+        run: python -m unittest discover -s master_integration_r1 -p 'test_capture_native.py' -v
+      - name: Bithumb native public trio; never trade
+        continue-on-error: true
+        run: >-
+          python master_integration_r1/capture_native.py
+          --mode bithumb-trio --market KRW-BTC
+          --run-id BITHUMB_${{ github.run_id }}_${{ github.run_attempt }}
+          --out evidence
+      - name: Verify Bithumb bytes; zero files is BLOCKED
+        if: always()
+        continue-on-error: true
+        run: |
+          p=$(find evidence -path '*/manifest.json' -name manifest.json | grep BITHUMB | head -n1)
+          if [ -n "$p" ]; then python master_integration_r1/capture_native.py --mode verify-manifest --manifest "$p"; else echo 'BLOCKED_NO_BITHUMB_MANIFEST'; exit 2; fi
+      - name: Binance market-data-only official endpoint 78 native bytes; replay only
+        continue-on-error: true
+        run: >-
+          python master_integration_r1/capture_native.py
+          --mode binance-mature
+          --binance-base https://data-api.binance.vision
+          --prefreeze master_integration_r1/r0_prefreeze_20261011_1930KST.json
+          --start-ms 1791709200000
+          --run-id BINANCE_${{ github.run_id }}_${{ github.run_attempt }}
+          --out evidence
+      - name: Verify Binance 78 raw bytes; missing not zero
+        if: always()
+        continue-on-error: true
+        run: |
+          p=$(find evidence -path '*/manifest.json' -name manifest.json | grep BINANCE | head -n1)
+          if [ -n "$p" ]; then python master_integration_r1/capture_native.py --mode verify-manifest --manifest "$p"; else echo 'BLOCKED_NO_BINANCE_MANIFEST'; exit 2; fi
+      - name: Preserve evidence for audit (does not imply success)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: master-r1-native-readonly-${{ github.run_id }}-${{ github.run_attempt }}
+          path: evidence/
+          if-no-files-found: warn
+          retention-days: 14
